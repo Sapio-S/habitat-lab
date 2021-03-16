@@ -108,7 +108,7 @@ _C.SIMULATOR.TYPE = "Sim-v0"
 _C.SIMULATOR.ACTION_SPACE_CONFIG = "v0"
 _C.SIMULATOR.FORWARD_STEP_SIZE = 0.25  # in metres
 _C.SIMULATOR.SCENE = (
-    "data/scene_datasets/habitat-test-scenes/" "van-gogh-room.glb"
+    "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/habitat-test-scenes/" "van-gogh-room.glb"
 )
 _C.SIMULATOR.SEED = _C.SEED
 _C.SIMULATOR.TURN_ANGLE = 10  # angle to rotate left or right in degrees
@@ -168,10 +168,10 @@ _C.SIMULATOR.HABITAT_SIM_V0.GPU_DEVICE_ID = 0
 _C.DATASET = CN()
 _C.DATASET.TYPE = "PointNav-v1"
 _C.DATASET.SPLIT = "train"
-_C.DATASET.SCENES_DIR = "data/scene_datasets"
+_C.DATASET.SCENES_DIR = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat"
 _C.DATASET.CONTENT_SCENES = ["*"]
 _C.DATASET.DATA_PATH = (
-    "data/datasets/pointnav/habitat-test-scenes/v1/{split}/{split}.json.gz"
+    "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/pointnav/habitat-test-scenes/v1/{split}/{split}.json.gz"
 )
 
 
