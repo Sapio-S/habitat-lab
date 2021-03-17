@@ -199,11 +199,13 @@ class Env:
         self.reconfigure(self._config)
 
         observations = self._sim.reset()
-        observations.update(
-            self.task.sensor_suite.get_observations(
-                observations=observations, episode=self.current_episode
+
+        for agent_id in range(len(observations)):
+            observations[agent_id].update(
+                self.task.sensor_suite.get_observations(
+                    observations=observations[agent_id], episode=self.current_episode
+                )
             )
-        )
 
         self._task.measurements.reset_measures(episode=self.current_episode)
 
