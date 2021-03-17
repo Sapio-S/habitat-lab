@@ -211,7 +211,7 @@ _C.SIMULATOR.TYPE = "Sim-v0"
 _C.SIMULATOR.ACTION_SPACE_CONFIG = "v0"
 _C.SIMULATOR.FORWARD_STEP_SIZE = 0.25  # in metres
 _C.SIMULATOR.SCENE = (
-    "data/scene_datasets/habitat-test-scenes/van-gogh-room.glb"
+    "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/habitat-test-scenes/" "van-gogh-room.glb"
 )
 _C.SIMULATOR.SEED = _C.SEED
 _C.SIMULATOR.TURN_ANGLE = 10  # angle to rotate left or right in degrees
@@ -260,7 +260,20 @@ _C.SIMULATOR.AGENT_0.SENSORS = ["RGB_SENSOR"]
 _C.SIMULATOR.AGENT_0.IS_SET_START_STATE = False
 _C.SIMULATOR.AGENT_0.START_POSITION = [0, 0, 0]
 _C.SIMULATOR.AGENT_0.START_ROTATION = [0, 0, 0, 1]
-_C.SIMULATOR.AGENTS = ["AGENT_0"]
+_C.SIMULATOR.AGENTS = ["AGENT_1"]
+_C.SIMULATOR.AGENT_1 = CN()
+_C.SIMULATOR.AGENT_1.HEIGHT = 1.5
+_C.SIMULATOR.AGENT_1.RADIUS = 0.1
+_C.SIMULATOR.AGENT_1.MASS = 32.0
+_C.SIMULATOR.AGENT_1.LINEAR_ACCELERATION = 20.0
+_C.SIMULATOR.AGENT_1.ANGULAR_ACCELERATION = 4 * 3.14
+_C.SIMULATOR.AGENT_1.LINEAR_FRICTION = 0.5
+_C.SIMULATOR.AGENT_1.ANGULAR_FRICTION = 1.0
+_C.SIMULATOR.AGENT_1.COEFFICIENT_OF_RESTITUTION = 0.0
+_C.SIMULATOR.AGENT_1.SENSORS = ["RGB_SENSOR"]
+_C.SIMULATOR.AGENT_1.IS_SET_START_STATE = False
+_C.SIMULATOR.AGENT_1.START_POSITION = [1, 1, 0]
+_C.SIMULATOR.AGENT_1.START_ROTATION = [0, 0, 0, 1]
 # -----------------------------------------------------------------------------
 # SIMULATOR HABITAT_SIM_V0
 # -----------------------------------------------------------------------------
@@ -328,10 +341,10 @@ _C.PYROBOT.LOCOBOT.CAMERA_ACTIONS = ["set_pan", "set_tilt", "set_pan_tilt"]
 _C.DATASET = CN()
 _C.DATASET.TYPE = "PointNav-v1"
 _C.DATASET.SPLIT = "train"
-_C.DATASET.SCENES_DIR = "data/scene_datasets"
+_C.DATASET.SCENES_DIR = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat"
 _C.DATASET.CONTENT_SCENES = ["*"]
 _C.DATASET.DATA_PATH = (
-    "data/datasets/pointnav/habitat-test-scenes/v1/{split}/{split}.json.gz"
+    "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/pointnav/habitat-test-scenes/v1/{split}/{split}.json.gz"
 )
 
 # -----------------------------------------------------------------------------

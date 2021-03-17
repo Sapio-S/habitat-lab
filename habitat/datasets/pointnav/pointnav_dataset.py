@@ -19,7 +19,7 @@ from habitat.tasks.nav.nav import (
 )
 
 CONTENT_SCENES_PATH_FIELD = "content_scenes_path"
-DEFAULT_SCENE_PATH_PREFIX = "data/scene_datasets/"
+DEFAULT_SCENE_PATH_PREFIX = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/"
 
 
 @registry.register_dataset(name="PointNav-v1")
@@ -31,6 +31,8 @@ class PointNavDatasetV1(Dataset):
 
     @staticmethod
     def check_config_paths_exist(config: Config) -> bool:
+        print(config.DATA_PATH.format(split=config.SPLIT))
+        print(config.SCENES_DIR)
         return os.path.exists(
             config.DATA_PATH.format(split=config.SPLIT)
         ) and os.path.exists(config.SCENES_DIR)
@@ -40,7 +42,7 @@ class PointNavDatasetV1(Dataset):
         r"""Return list of scene ids for which dataset has separate files with
         episodes.
         """
-        assert cls.check_config_paths_exist(config)
+        assert PointNavDatasetV1.check_config_paths_exist(config)
         dataset_dir = os.path.dirname(
             config.DATA_PATH.format(split=config.SPLIT)
         )

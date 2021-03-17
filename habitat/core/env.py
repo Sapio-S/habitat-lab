@@ -232,14 +232,7 @@ class Env:
         if self._past_limit():
             self._episode_over = True
 
-        if self.episode_iterator is not None and isinstance(
-            self.episode_iterator, EpisodeIterator
-        ):
-            self.episode_iterator.step_taken()
-
-    def step(
-        self, action: Union[int, str, Dict[str, Any]], **kwargs
-    ) -> Observations:
+    def step(self, action: int, agent_id) -> Observations:
         r"""Perform an action in the environment and return observations.
 
         :param action: action (belonging to :ref:`action_space`) to be
@@ -257,12 +250,11 @@ class Env:
             self._episode_over is False
         ), "Episode over, call reset before calling step"
 
-        # Support simpler interface as well
-        if isinstance(action, (str, int, np.integer)):
-            action = {"action": action}
-
-        observations = self.task.step(
-            action=action, episode=self.current_episode
+        observations = self._sim.step(action, agent_id)
+        observations.update(
+            self._task.sensor_suite.get_observations(
+                observations=observations, episode=self.current_episode
+            )
         )
 
         self._task.measurements.update_measures(
