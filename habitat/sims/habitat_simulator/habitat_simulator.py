@@ -159,17 +159,9 @@ class HabitatSim(Simulator):
     Args:
         config: configuration for initializing the simulator.
     """
-    def __uu__(self):
-        self.
-        
-    def __init__(self, config: Config)>:
+    def __init__(self, config: Config) -> None:
         self.config = config
         agent_config = self._get_agent_config()
-        #print("AGENT_CONFIGS")
-        #print(agent_config)
-        #print(self.config.AGENTS)
-        #print("END_AGENT_CONFIGS")
-
         sim_sensors = []
         for sensor_name in agent_config.SENSORS:
             sensor_cfg = getattr(self.config, sensor_name)
