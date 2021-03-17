@@ -60,11 +60,18 @@ class HabitatSimRGBSensor(RGBSensor):
         )
 
     def get_observation(self, sim_obs):
+        '''
+        obs = [
+            sim_obs[i].get(self.uuid, None)[:, :, :RGBSENSOR_DIMENSION]
+            for i in range(len(self._sim.agents))
+        ]
+        '''
         obs = sim_obs.get(self.uuid, None)
         check_sim_obs(obs, self)
 
         # remove alpha channel
         obs = obs[:, :, :RGBSENSOR_DIMENSION]
+        
         return obs
 
 
@@ -95,6 +102,18 @@ class HabitatSimDepthSensor(DepthSensor):
         )
 
     def get_observation(self, sim_obs):
+        '''
+        obs = []
+        for i in range(len(self._sim.agents)):
+            OB = sim_obs[i].get(self.uuid, None)
+            check_sim_obs(OB, self)
+            OB = np.clip(OB, self.config.MIN_DEPTH, self.config.MAX_DEPTH)
+            if self.config.NORMALIZE_DEPTH:
+                OB = (OB - self.config.MIN_DEPTH) / self.config.MAX_DEPTH
+            
+            OB = np.expand_dims(OB, axis=2)
+            obs.append(OB)
+        '''
         obs = sim_obs.get(self.uuid, None)
         check_sim_obs(obs, self)
 
@@ -104,6 +123,7 @@ class HabitatSimDepthSensor(DepthSensor):
             obs = (obs - self.config.MIN_DEPTH) / self.config.MAX_DEPTH
 
         obs = np.expand_dims(obs, axis=2)  # make depth observation a 3D array
+        
 
         return obs
 
@@ -139,10 +159,16 @@ class HabitatSim(Simulator):
     Args:
         config: configuration for initializing the simulator.
     """
-
-    def __init__(self, config: Config) -> None:
+    def __uu__(self):
+        self.
+        
+    def __init__(self, config: Config)>:
         self.config = config
         agent_config = self._get_agent_config()
+        #print("AGENT_CONFIGS")
+        #print(agent_config)
+        #print(self.config.AGENTS)
+        #print("END_AGENT_CONFIGS")
 
         sim_sensors = []
         for sensor_name in agent_config.SENSORS:
@@ -194,7 +220,11 @@ class HabitatSim(Simulator):
             self.config.ACTION_SPACE_CONFIG
         )(self.config).get()
 
-        return habitat_sim.Configuration(sim_config, [agent_config])
+        agents_config = []
+        for i in range(len(self.config.AGENTS)):
+            agents_config.append(agent_config)
+
+        return habitat_sim.Configuration(sim_config, agents_config)
 
     @property
     def sensor_suite(self) -> SensorSuite:
@@ -225,11 +255,18 @@ class HabitatSim(Simulator):
     def reset(self):
         sim_obs = self._sim.reset()
         if self._update_agents_state():
-            sim_obs = self._sim.get_sensor_observations(agent_id)
+            sim_obs = [
+            self._sim.get_sensor_observations(i)
+            for i in range(len(self._sim.agents))
+        ]
+            #self._sim.get_sensor_observations()
 
         self._prev_sim_obs = sim_obs
         self._is_episode_active = True
-        return self._sensor_suite.get_observations(sim_obs)
+        return [
+            self._sensor_suite.get_observations(sim_obs[i])
+            for i in range(len(self._sim.agents))
+        ]
 
     def step(self, action, agent_id):
         assert self._is_episode_active, (
@@ -370,9 +407,9 @@ class HabitatSim(Simulator):
         return agent_config
 
     def get_agent_state(self, agent_id: int = 0) -> habitat_sim.AgentState:
-        assert agent_id == 0, "No support of multi agent in {} yet.".format(
-            self.__class__.__name__
-        )
+        #assert agent_id == 0, "No support of multi agent in {} yet.".format(
+       #     self.__class__.__name__
+       # )
         return self._sim.get_agent(agent_id).get_state()
 
     def set_agent_state(
