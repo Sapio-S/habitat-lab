@@ -215,7 +215,7 @@ class Env:
         if self._past_limit():
             self._episode_over = True
 
-    def step(self, action: int) -> Observations:
+    def step(self, action: int, agent_id) -> Observations:
         r"""Perform an action in the environment and return observations.
 
         Args:
@@ -233,7 +233,7 @@ class Env:
             self._episode_over is False
         ), "Episode over, call reset before calling step"
 
-        observations = self._sim.step(action)
+        observations = self._sim.step(action, agent_id)
         observations.update(
             self._task.sensor_suite.get_observations(
                 observations=observations, episode=self.current_episode

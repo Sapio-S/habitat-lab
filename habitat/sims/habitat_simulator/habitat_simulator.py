@@ -225,13 +225,13 @@ class HabitatSim(Simulator):
     def reset(self):
         sim_obs = self._sim.reset()
         if self._update_agents_state():
-            sim_obs = self._sim.get_sensor_observations()
+            sim_obs = self._sim.get_sensor_observations(agent_id)
 
         self._prev_sim_obs = sim_obs
         self._is_episode_active = True
         return self._sensor_suite.get_observations(sim_obs)
 
-    def step(self, action):
+    def step(self, action, agent_id):
         assert self._is_episode_active, (
             "episode is not active, environment not RESET or "
             "STOP action called previously"
@@ -239,9 +239,9 @@ class HabitatSim(Simulator):
 
         if action == self.index_stop_action:
             self._is_episode_active = False
-            sim_obs = self._sim.get_sensor_observations()
+            sim_obs = self._sim.get_sensor_observations(agent_id)
         else:
-            sim_obs = self._sim.step(action)
+            sim_obs = self._sim.step(action, agent_id)
 
         self._prev_sim_obs = sim_obs
 
