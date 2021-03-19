@@ -355,7 +355,7 @@ class RLEnv(gym.Env):
         """
         raise NotImplementedError
 
-    def step(self, action: int) -> Tuple[Observations, Any, bool, dict]:
+    def step(self, action: int, i) -> Tuple[Observations, Any, bool, dict]:
         r"""Perform an action in the environment and return
         ``(observations, reward, done, info)``.
 
@@ -367,10 +367,10 @@ class RLEnv(gym.Env):
             ``(observations, reward, done, info)``.
         """
 
-        observations = self._env.step(action)
-        reward = self.get_reward(observations)
-        done = self.get_done(observations)
-        info = self.get_info(observations)
+        observations = self._env.step(action, i)
+        reward = self.get_reward(observations,i)
+        done = self.get_done(observations, i)
+        info = self.get_info(observations, i)
 
         return observations, reward, done, info
 

@@ -4,6 +4,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import onpolicy
 from typing import List, Optional, Union
 
 from habitat.config import Config as CN  # type: ignore
@@ -108,7 +109,7 @@ _C.SIMULATOR.TYPE = "Sim-v0"
 _C.SIMULATOR.ACTION_SPACE_CONFIG = "v0"
 _C.SIMULATOR.FORWARD_STEP_SIZE = 0.25  # in metres
 _C.SIMULATOR.SCENE = (
-    "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/habitat-test-scenes/" "van-gogh-room.glb"
+    onpolicy.__path__[0] + "/envs/habitat/data/scene_datasets/habitat-test-scenes/" "van-gogh-room.glb"
 )
 _C.SIMULATOR.SEED = _C.SEED
 _C.SIMULATOR.TURN_ANGLE = 10  # angle to rotate left or right in degrees
@@ -181,10 +182,10 @@ _C.SIMULATOR.HABITAT_SIM_V0.GPU_DEVICE_ID = 0
 _C.DATASET = CN()
 _C.DATASET.TYPE = "PointNav-v1"
 _C.DATASET.SPLIT = "train"
-_C.DATASET.SCENES_DIR = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat"
+_C.DATASET.SCENES_DIR = onpolicy.__path__[0] + "/envs/habitat"
 _C.DATASET.CONTENT_SCENES = ["*"]
 _C.DATASET.DATA_PATH = (
-    "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/pointnav/habitat-test-scenes/v1/{split}/{split}.json.gz"
+    onpolicy.__path__[0] + "/envs/habitat/data/scene_datasets/pointnav/habitat-test-scenes/v1/{split}/{split}.json.gz"
 )
 
 
