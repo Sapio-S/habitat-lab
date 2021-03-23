@@ -108,7 +108,7 @@ class Env:
         self._max_episode_seconds = (
             self._config.ENVIRONMENT.MAX_EPISODE_SECONDS
         )
-        self._max_episode_steps = self._config.ENVIRONMENT.MAX_EPISODE_STEPS
+        self._max_episode_steps = self._config.ENVIRONMENT.MAX_EPISODE_STEPS * self._config.SIMULATOR.NUM_AGENTS
         self._elapsed_steps = 0
         self._episode_start_time: Optional[float] = None
         self._episode_over = False

@@ -24,6 +24,7 @@ STEP_COMMAND = "step"
 RESET_COMMAND = "reset"
 RENDER_COMMAND = "render"
 CLOSE_COMMAND = "close"
+SHARE_OBSERVATION_SPACE_COMMAND = "share_observation_space"
 OBSERVATION_SPACE_COMMAND = "observation_space"
 ACTION_SPACE_COMMAND = "action_space"
 CALL_COMMAND = "call"
@@ -112,12 +113,17 @@ class VectorEnv:
 
         for write_fn in self._connection_write_fns:
             write_fn((OBSERVATION_SPACE_COMMAND, None))
-        self.observation_spaces = [
+        self.observation_space = [
+            read_fn() for read_fn in self._connection_read_fns
+        ]
+        for write_fn in self._connection_write_fns:
+            write_fn((SHARE_OBSERVATION_SPACE_COMMAND, None))
+        self.share_observation_space = [
             read_fn() for read_fn in self._connection_read_fns
         ]
         for write_fn in self._connection_write_fns:
             write_fn((ACTION_SPACE_COMMAND, None))
-        self.action_spaces = [
+        self.action_space = [
             read_fn() for read_fn in self._connection_read_fns
         ]
         self._paused = []
@@ -156,7 +162,7 @@ class VectorEnv:
                         # habitat.RLEnv
                         observations, reward, done, info = env.step(data)
                         if auto_reset_done and done:
-                            observations = env.reset()
+                            observations, info = env.reset()
                         connection_write_fn((observations, reward, done, info))
                     elif isinstance(env, habitat.Env):
                         # habitat.Env
@@ -168,14 +174,14 @@ class VectorEnv:
                         raise NotImplementedError
 
                 elif command == RESET_COMMAND:
-                    observations = env.reset()
-                    connection_write_fn(observations)
+                    observations, info = env.reset()
+                    connection_write_fn((observations, info))
 
                 elif command == RENDER_COMMAND:
                     connection_write_fn(env.render(*data[0], **data[1]))
 
                 elif (
-                    command == OBSERVATION_SPACE_COMMAND
+                    command == OBSERVATION_SPACE_COMMAND or command == SHARE_OBSERVATION_SPACE_COMMAND
                     or command == ACTION_SPACE_COMMAND
                 ):
                     connection_write_fn(getattr(env, command))

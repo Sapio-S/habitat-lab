@@ -144,6 +144,7 @@ _C.SIMULATOR.SEMANTIC_SENSOR.TYPE = "HabitatSimSemanticSensor"
 # -----------------------------------------------------------------------------
 # AGENT
 # -----------------------------------------------------------------------------
+_C.SIMULATOR.NUM_AGENTS = 2
 _C.SIMULATOR.AGENT_0 = CN()
 _C.SIMULATOR.AGENT_0.HEIGHT = 1.5
 _C.SIMULATOR.AGENT_0.RADIUS = 0.1
