@@ -32,4 +32,4 @@ TASK:
 DATASET:
   TYPE: PointNav-v1
   SPLIT: train
-  DATA_PATH: /home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/datasets/pointnav/gibson/v1/{split}/{split}.json.gz
+  DATA_PATH: /home/yuchao19/project/onpolicy/onpolicy/envs/habitat/data/datasets/pointnav/gibson/v1/{split}/{split}.json.gz

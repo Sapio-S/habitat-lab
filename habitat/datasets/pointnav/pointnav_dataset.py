@@ -4,6 +4,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import onpolicy
 import gzip
 import json
 import os
@@ -20,7 +21,7 @@ from habitat.tasks.nav.nav_task import (
 
 ALL_SCENES_MASK = "*"
 CONTENT_SCENES_PATH_FIELD = "content_scenes_path"
-DEFAULT_SCENE_PATH_PREFIX = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/scene_datasets/"
+DEFAULT_SCENE_PATH_PREFIX = onpolicy.__path__[0] + "/envs/habitat/data/scene_datasets/"
 
 
 @registry.register_dataset(name="PointNav-v1")

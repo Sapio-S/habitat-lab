@@ -4,6 +4,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import onpolicy
 from typing import List, Optional, Union
 
 import numpy as np
@@ -11,13 +12,13 @@ import numpy as np
 from habitat import get_config as get_task_config
 from habitat.config import Config as CN
 
-DEFAULT_CONFIG_DIR = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/habitat-lab/configs/"
+DEFAULT_CONFIG_DIR = onpolicy.__path__[0] + "/envs/habitat/habitat-lab/configs/"
 CONFIG_FILE_SEPARATOR = ","
 # -----------------------------------------------------------------------------
 # EXPERIMENT CONFIG
 # -----------------------------------------------------------------------------
 _C = CN()
-_C.BASE_TASK_CONFIG_PATH = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/habitat-lab/configs/tasks/pointnav.yaml"
+_C.BASE_TASK_CONFIG_PATH = onpolicy.__path__[0] + "/envs/habitat/habitat-lab/configs/tasks/pointnav.yaml"
 _C.TASK_CONFIG = CN()  # task_config will be stored as a config node
 _C.CMD_TRAILING_OPTS = []  # store command line options as list of strings
 _C.TRAINER_NAME = "ppo"
@@ -28,10 +29,10 @@ _C.VIDEO_OPTION = ["disk", "tensorboard"]
 _C.TENSORBOARD_DIR = "tb"
 _C.VIDEO_DIR = "video_dir"
 _C.TEST_EPISODE_COUNT = 2
-_C.EVAL_CKPT_PATH_DIR = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/checkpoints"  # path to ckpt or path to ckpts dir
+_C.EVAL_CKPT_PATH_DIR = onpolicy.__path__[0] + "/envs/habitat/data/checkpoints"  # path to ckpt or path to ckpts dir
 _C.NUM_PROCESSES = 16
 _C.SENSORS = ["RGB_SENSOR", "DEPTH_SENSOR"]
-_C.CHECKPOINT_FOLDER = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/data/checkpoints"
+_C.CHECKPOINT_FOLDER = onpolicy.__path__[0] + "/envs/habitat/data/checkpoints"
 _C.NUM_UPDATES = 10000
 _C.LOG_INTERVAL = 10
 _C.LOG_FILE = "train.log"
@@ -66,9 +67,9 @@ _C.RL.PPO.reward_window_size = 50
 # ORBSLAM2 BASELINE
 # -----------------------------------------------------------------------------
 _C.ORBSLAM2 = CN()
-_C.ORBSLAM2.SLAM_VOCAB_PATH = "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/habitat-lab/habitat_baselines/slambased/data/ORBvoc.txt"
+_C.ORBSLAM2.SLAM_VOCAB_PATH = onpolicy.__path__[0] + "/envs/habitat/habitat-lab/habitat_baselines/slambased/data/ORBvoc.txt"
 _C.ORBSLAM2.SLAM_SETTINGS_PATH = (
-    "/home/yuchao/project/onpolicy/onpolicy/envs/habitat/habitat-lab/habitat_baselines/slambased/data/mp3d3_small1k.yaml"
+    onpolicy.__path__[0] + "/envs/habitat/habitat-lab/habitat_baselines/slambased/data/mp3d3_small1k.yaml"
 )
 _C.ORBSLAM2.MAP_CELL_SIZE = 0.1
 _C.ORBSLAM2.MAP_SIZE = 40
