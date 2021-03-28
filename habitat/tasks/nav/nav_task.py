@@ -36,20 +36,19 @@ MAP_THICKNESS_SCALAR: int = 1250
 def merge_sim_episode_config(
     sim_config: Config, episode: Type[Episode]
 ) -> Any:
+
     sim_config.defrost()
     sim_config.SCENE = episode.scene_id
     sim_config.freeze()
-    if (
-        episode.start_position is not None
-        and episode.start_rotation is not None
-    ):
-        agent_name = sim_config.AGENTS[sim_config.DEFAULT_AGENT_ID]
-        agent_cfg = getattr(sim_config, agent_name)
+
+    if not sim_config.SET_RANDOM_AGENT_POS and (episode.start_position is not None and episode.start_rotation is not None):
+        agent_cfg = getattr(sim_config, 'AGENT')
         agent_cfg.defrost()
         agent_cfg.START_POSITION = episode.start_position
         agent_cfg.START_ROTATION = episode.start_rotation
         agent_cfg.IS_SET_START_STATE = True
         agent_cfg.freeze()
+        
     return sim_config
 
 
@@ -194,7 +193,7 @@ class PointGoalSensor(Sensor):
                 return direction_vector_agent
 
     def get_observation(self, observations, episode: Episode):
-        source_position = np.array(episode.start_position, dtype=np.float32)
+        source_position = np.array(episode.start_position, dtype=np.float32) # ! check
         rotation_world_start = quaternion_from_coeff(episode.start_rotation)
         goal_position = np.array(episode.goals[0].position, dtype=np.float32)
 

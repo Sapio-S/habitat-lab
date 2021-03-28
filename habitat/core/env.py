@@ -64,6 +64,7 @@ class Env:
             "environment, use config.freeze()."
         )
         self._config = config
+
         self._dataset = dataset
         self._current_episode_index = None
         if self._dataset is None and config.DATASET.TYPE:
@@ -257,6 +258,7 @@ class Env:
         self._config = config
 
         self._config.defrost()
+        
         self._config.SIMULATOR = self._task.overwrite_sim_config(
             self._config.SIMULATOR, self.current_episode
         )

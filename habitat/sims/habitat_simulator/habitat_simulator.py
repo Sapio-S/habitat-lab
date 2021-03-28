@@ -124,7 +124,6 @@ class HabitatSimDepthSensor(DepthSensor):
 
         obs = np.expand_dims(obs, axis=2)  # make depth observation a 3D array
         
-
         return obs
 
 
@@ -181,11 +180,13 @@ class HabitatSim(Simulator):
         )
 
         self._is_episode_active = False
+        
 
     def create_sim_config(
         self, _sensor_suite: SensorSuite
     ) -> habitat_sim.Configuration:
         sim_config = habitat_sim.SimulatorConfiguration()
+        sim_config.seed = self.config.SEED
         sim_config.scene.id = self.config.SCENE
         sim_config.gpu_device_id = self.config.HABITAT_SIM_V0.GPU_DEVICE_ID
         agent_config = habitat_sim.AgentConfiguration()
@@ -213,7 +214,7 @@ class HabitatSim(Simulator):
         )(self.config).get()
 
         agents_config = []
-        for i in range(len(self.config.AGENTS)):
+        for i in range(self.config.NUM_AGENTS):
             agents_config.append(agent_config)
 
         return habitat_sim.Configuration(sim_config, agents_config)
@@ -232,8 +233,8 @@ class HabitatSim(Simulator):
 
     def _update_agents_state(self) -> bool:
         is_updated = False
-        for agent_id, _ in enumerate(self.config.AGENTS):
-            agent_cfg = self._get_agent_config(agent_id)
+        for agent_id in range(self.config.NUM_AGENTS):
+            agent_cfg = self._get_agent_config()
             if agent_cfg.IS_SET_START_STATE:
                 self.set_agent_state(
                     agent_cfg.START_POSITION,
@@ -251,7 +252,6 @@ class HabitatSim(Simulator):
             self._sim.get_sensor_observations(i)
             for i in range(len(self._sim.agents))
         ]
-            #self._sim.get_sensor_observations()
 
         self._prev_sim_obs = sim_obs
         self._is_episode_active = True
@@ -391,17 +391,11 @@ class HabitatSim(Simulator):
     def close(self):
         self._sim.close()
 
-    def _get_agent_config(self, agent_id: Optional[int] = None) -> Any:
-        if agent_id is None:
-            agent_id = self.config.DEFAULT_AGENT_ID
-        agent_name = self.config.AGENTS[agent_id]
-        agent_config = getattr(self.config, agent_name)
+    def _get_agent_config(self) -> Any:
+        agent_config = getattr(self.config, 'AGENT')
         return agent_config
 
     def get_agent_state(self, agent_id: int = 0) -> habitat_sim.AgentState:
-        #assert agent_id == 0, "No support of multi agent in {} yet.".format(
-       #     self.__class__.__name__
-       # )
         return self._sim.get_agent(agent_id).get_state()
 
     def set_agent_state(
@@ -440,12 +434,12 @@ class HabitatSim(Simulator):
         # state for the sensors. This will cause them to follow the agent's
         # body
         new_state.sensor_states = dict()
-
         agent.set_state(new_state, reset_sensors)
 
         if not self._check_agent_position(position, agent_id):
             agent.set_state(original_state, reset_sensors)
             return False
+
         return True
 
     def get_observations_at(

@@ -1,11 +1,7 @@
 ENVIRONMENT:
   MAX_EPISODE_STEPS: 500
 SIMULATOR:
-  AGENTS:
-    ['AGENT_0', 'AGENT_1']
-  AGENT_0:
-    SENSORS: ['RGB_SENSOR', 'DEPTH_SENSOR']
-  AGENT_1:
+  AGENT:
     SENSORS: ['RGB_SENSOR', 'DEPTH_SENSOR']
   HABITAT_SIM_V0:
     GPU_DEVICE_ID: 0
@@ -32,4 +28,3 @@ TASK:
 DATASET:
   TYPE: PointNav-v1
   SPLIT: train
-  DATA_PATH: /home/yuchao19/project/onpolicy/onpolicy/envs/habitat/data/datasets/pointnav/gibson/v1/{split}/{split}.json.gz
