@@ -45,7 +45,6 @@ class PointNavDatasetV1(Dataset):
         r"""Return list of scene ids for which dataset has separate files with
         episodes.
         """
-        print(config)
         assert PointNavDatasetV1.check_config_paths_exist(config)
         dataset_dir = os.path.dirname(
             config.DATA_PATH.format(split=config.SPLIT)

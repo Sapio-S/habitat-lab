@@ -34,18 +34,18 @@ MAP_THICKNESS_SCALAR: int = 1250
 
 
 def merge_sim_episode_config(
-    sim_config: Config, episode: Type[Episode]
+    sim_config: Config, episode: Type[Episode], start_position: Type[List], start_rotation: Type[List]
 ) -> Any:
 
     sim_config.defrost()
     sim_config.SCENE = episode.scene_id
     sim_config.freeze()
 
-    if not sim_config.SET_RANDOM_AGENT_POS and (episode.start_position is not None and episode.start_rotation is not None):
+    if not sim_config.SET_RANDOM_AGENT_POS and (start_position is not None and start_rotation is not None):
         agent_cfg = getattr(sim_config, 'AGENT')
         agent_cfg.defrost()
-        agent_cfg.START_POSITION = episode.start_position
-        agent_cfg.START_ROTATION = episode.start_rotation
+        agent_cfg.START_POSITION = start_position
+        agent_cfg.START_ROTATION = start_rotation
         agent_cfg.IS_SET_START_STATE = True
         agent_cfg.freeze()
         
@@ -719,6 +719,6 @@ class NavigationTask(EmbodiedTask):
         super().__init__(config=task_config, sim=sim, dataset=dataset)
 
     def overwrite_sim_config(
-        self, sim_config: Any, episode: Type[Episode]
+        self, sim_config: Any, episode: Type[Episode], start_position: Type[List], start_rotation: Type[List]
     ) -> Any:
-        return merge_sim_episode_config(sim_config, episode)
+        return merge_sim_episode_config(sim_config, episode, start_position, start_rotation)

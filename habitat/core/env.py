@@ -18,6 +18,8 @@ from habitat.core.simulator import Observations, Simulator
 from habitat.datasets import make_dataset
 from habitat.sims import make_sim
 from habitat.tasks import make_task
+from habitat.utils.geometry_utils import quaternion_to_list
+from habitat_sim import utils
 
 
 class Env:
@@ -258,9 +260,15 @@ class Env:
         self._config = config
 
         self._config.defrost()
-        
+
+        start_position = self._sim.sample_navigable_point()
+        start_rotation = utils.quat_from_angle_axis(
+            np.random.uniform(0, 2.0 * np.pi), np.array([0, 1, 0])
+            )
+        start_rotation = quaternion_to_list(start_rotation)
+
         self._config.SIMULATOR = self._task.overwrite_sim_config(
-            self._config.SIMULATOR, self.current_episode
+            self._config.SIMULATOR, self.current_episode, start_position, start_rotation
         )
         self._config.freeze()
 
