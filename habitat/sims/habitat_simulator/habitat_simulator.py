@@ -9,7 +9,7 @@ from typing import Any, List, Optional
 
 import numpy as np
 from gym import Space, spaces
-
+from habitat_sim import utils
 import habitat_sim
 from habitat.core.logging import logger
 from habitat.core.registry import registry
@@ -240,6 +240,7 @@ class HabitatSim(Simulator):
                     agent_cfg.START_POSITION,
                     agent_cfg.START_ROTATION,
                     agent_id,
+                    self.config.NUM_AGENTS
                 )
                 is_updated = True
 
@@ -403,6 +404,7 @@ class HabitatSim(Simulator):
         position: List[float],
         rotation: List[float],
         agent_id: int = 0,
+        num_agents: int = 2,
         reset_sensors: bool = True,
     ) -> bool:
         r"""Sets agent state similar to initialize_agent, but without agents
@@ -426,7 +428,17 @@ class HabitatSim(Simulator):
         original_state = self.get_agent_state(agent_id)
         new_state = self.get_agent_state(agent_id)
         new_state.position = position
-        new_state.rotation = rotation
+        
+        if self.config.USE_SAME_ROTATION:
+            new_state.rotation = rotation
+        else:
+            new_rotation = utils.quat_from_coeffs(rotation)
+            new_angle_rotation = utils.quat_to_angle_axis(new_rotation)
+            
+            if new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id > 2*np.pi:  
+                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id-2*np.pi, new_angle_rotation[1])
+            else:
+                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id, new_angle_rotation[1])
 
         # NB: The agent state also contains the sensor states in _absolute_
         # coordinates. In order to set the agent's body to a specific
