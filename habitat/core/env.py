@@ -67,6 +67,7 @@ class Env:
             "environment, use config.freeze()."
         )
         self._config = config
+        self.num_agents = config.SIMULATOR.NUM_AGENTS
 
         self._dataset = dataset
         self._current_episode_index = None
@@ -259,16 +260,30 @@ class Env:
         random.seed(seed)
         self._sim.seed(seed)
 
+    def generate_state(self):
+        generate_success = False
+        while not generate_success:
+            state = random.sample(self.episodes, self.num_agents)
+            start_position = []
+            start_rotation = []
+            start_y = []
+            for agent_id in range(self.num_agents):
+                start_position.append(state[agent_id].start_position)
+                start_y.append(state[agent_id].start_position[1])
+                start_rotation.append(state[agent_id].start_rotation)
+
+            if len(np.unique(start_y)) == 1:
+                print("generate success!")
+                generate_success = True
+            
+        return start_position, start_rotation
+
     def reconfigure(self, config: Config) -> None:
         self._config = config
 
         self._config.defrost()
 
-        start_position = self._sim.sample_navigable_point()
-        start_rotation = utils.quat_from_angle_axis(
-            np.random.uniform(0, 2.0 * np.pi), np.array([0, 1, 0])
-            )
-        start_rotation = quaternion_to_list(start_rotation)
+        start_position, start_rotation = self.generate_state()
 
         self._config.SIMULATOR = self._task.overwrite_sim_config(
             self._config.SIMULATOR, self.current_episode, start_position, start_rotation

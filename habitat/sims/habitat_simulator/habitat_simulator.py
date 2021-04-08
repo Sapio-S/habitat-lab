@@ -237,8 +237,8 @@ class HabitatSim(Simulator):
             agent_cfg = self._get_agent_config()
             if agent_cfg.IS_SET_START_STATE:
                 self.set_agent_state(
-                    agent_cfg.START_POSITION,
-                    agent_cfg.START_ROTATION,
+                    agent_cfg.START_POSITION[agent_id],
+                    agent_cfg.START_ROTATION[agent_id],
                     agent_id,
                     self.config.NUM_AGENTS
                 )
@@ -428,14 +428,13 @@ class HabitatSim(Simulator):
         original_state = self.get_agent_state(agent_id)
         new_state = self.get_agent_state(agent_id)
         new_state.position = position
+        new_state.rotation = rotation
         
-        if self.config.USE_SAME_ROTATION:
-            new_state.rotation = rotation
-        else:
+        if not self.config.USE_DIFFERENT_START_POS and not self.config.USE_SAME_ROTATION:
             new_rotation = utils.quat_from_coeffs(rotation)
             new_angle_rotation = utils.quat_to_angle_axis(new_rotation)
             
-            if new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id > 2*np.pi:  
+            if new_angle_rotation[0] + (2*np.pi/num_agents)*agent_id > 2*np.pi:  
                 new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id-2*np.pi, new_angle_rotation[1])
             else:
                 new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id, new_angle_rotation[1])

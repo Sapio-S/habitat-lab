@@ -40,14 +40,13 @@ def merge_sim_episode_config(
     sim_config.defrost()
     sim_config.SCENE = episode.scene_id
     sim_config.freeze()
-
-    if not sim_config.USE_DIFFERENT_START_POS and (start_position is not None and start_rotation is not None):
-        agent_cfg = getattr(sim_config, 'AGENT')
-        agent_cfg.defrost()
-        agent_cfg.START_POSITION = start_position if not sim_config.USE_FIXED_START_POS else episode.start_position
-        agent_cfg.START_ROTATION = start_rotation if not sim_config.USE_FIXED_START_POS else episode.start_rotation
-        agent_cfg.IS_SET_START_STATE = True
-        agent_cfg.freeze()
+    
+    agent_cfg = getattr(sim_config, 'AGENT')
+    agent_cfg.defrost()
+    agent_cfg.START_POSITION = start_position if sim_config.USE_DIFFERENT_START_POS else [episode.start_position] * sim_config.NUM_AGENTS
+    agent_cfg.START_ROTATION = start_rotation if sim_config.USE_DIFFERENT_START_POS else [episode.start_rotation] * sim_config.NUM_AGENTS
+    agent_cfg.IS_SET_START_STATE = True
+    agent_cfg.freeze()
         
     return sim_config
 
