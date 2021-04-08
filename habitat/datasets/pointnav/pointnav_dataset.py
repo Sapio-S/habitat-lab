@@ -110,7 +110,6 @@ class PointNavDatasetV1(Dataset):
 
         for episode in deserialized["episodes"]:
             episode = NavigationEpisode(**episode)
-
             if scenes_dir is not None:
                 if episode.scene_id.startswith(DEFAULT_SCENE_PATH_PREFIX):
                     episode.scene_id = episode.scene_id[

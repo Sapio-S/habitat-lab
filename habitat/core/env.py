@@ -10,6 +10,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 import gym
 import numpy as np
 from gym.spaces.dict_space import Dict as SpaceDict
+import random
 
 from habitat.config import Config
 from habitat.core.dataset import Dataset, Episode
@@ -198,7 +199,8 @@ class Env:
 
         assert len(self.episodes) > 0, "Episodes list is empty"
 
-        self.current_episode = next(self._episode_iterator)
+        self.current_episode = random.choice(self.episodes) # next(self._episode_iterator)
+
         self.reconfigure(self._config)
 
         observations = self._sim.reset()
@@ -254,6 +256,7 @@ class Env:
         return observations
 
     def seed(self, seed: int) -> None:
+        random.seed(seed)
         self._sim.seed(seed)
 
     def reconfigure(self, config: Config) -> None:

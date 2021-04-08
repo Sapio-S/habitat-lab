@@ -320,13 +320,14 @@ class EpisodeIterator(Iterator):
         """
 
         next_episode = next(self._iterator, None)
+
         if next_episode is None:
             if not self.cycle:
                 raise StopIteration
             self._iterator = iter(self.episodes)
             if self.shuffle:
                 self._shuffle_iterator()
-            next_episode = next(self._iterator)
+            next_episode = next(self._iterator)     
 
         if self._prev_scene_id == next_episode.scene_id:
             self._rep_count += 1
