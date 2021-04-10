@@ -273,7 +273,6 @@ class Env:
                 start_rotation.append(state[agent_id].start_rotation)
 
             if len(np.unique(start_y)) == 1:
-                print("generate success!")
                 generate_success = True
             
         return start_position, start_rotation
