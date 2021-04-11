@@ -76,6 +76,7 @@ class Env:
                 id_dataset=config.DATASET.TYPE, config=config.DATASET
             )
         self._episodes = self._dataset.episodes if self._dataset else []
+
         self._current_episode = None
         iter_option_dict = {
             k.lower(): v
@@ -200,7 +201,7 @@ class Env:
 
         assert len(self.episodes) > 0, "Episodes list is empty"
 
-        self.current_episode = random.choice(self.episodes) # next(self._episode_iterator)
+        self.current_episode = random.choice(self.episodes) if self._config.DATASET.USE_SAME_SCENE else next(self._episode_iterator)
 
         self.reconfigure(self._config)
 
