@@ -29,6 +29,8 @@ from habitat.core.simulator import (
 
 RGBSENSOR_DIMENSION = 3
 
+import random
+
 
 def overwrite_config(config_from: Config, config_to: Any) -> None:
     for attr, value in config_from.items():
@@ -438,6 +440,15 @@ class HabitatSim(Simulator):
                 new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id-2*np.pi, new_angle_rotation[1])
             else:
                 new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id, new_angle_rotation[1])
+        
+        if self.config.USE_RANDOM_ROTATION:
+            new_rotation = utils.quat_from_coeffs(rotation)
+            new_angle_rotation = utils.quat_to_angle_axis(new_rotation)
+
+            if new_angle_rotation[0] + random.random()*2*np.pi > 2*np.pi:  
+                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0] + random.random()*2*np.pi - 2*np.pi, new_angle_rotation[1])
+            else:
+                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0] + random.random()*2*np.pi, new_angle_rotation[1])
 
         # NB: The agent state also contains the sensor states in _absolute_
         # coordinates. In order to set the agent's body to a specific

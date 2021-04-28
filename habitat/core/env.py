@@ -21,6 +21,7 @@ from habitat.sims import make_sim
 from habitat.tasks import make_task
 from habitat.utils.geometry_utils import quaternion_to_list
 from habitat_sim import utils
+from onpolicy.envs.habitat.utils import pose as pu
 
 
 class Env:
@@ -272,10 +273,23 @@ class Env:
                 start_position.append(state[agent_id].start_position)
                 start_y.append(state[agent_id].start_position[1])
                 start_rotation.append(state[agent_id].start_rotation)
-
+            
             if len(np.unique(start_y)) == 1:
                 generate_success = True
-            
+                for i in range(self.num_agents):
+                    x1 = -start_position[i][2]
+                    y1 = -start_position[i][0]
+                    for j in range(self.num_agents-i-1):
+                        x2 = -start_position[i+j+1][2]
+                        y2 = -start_position[i+j+1][0]
+                        if pu.get_l2_distance(x1, x2, y1, y2)<3:
+                            pass
+                        else:
+                            generate_success = False
+                            break
+                    if generate_success == False:
+                        break
+
         return start_position, start_rotation
 
     def reconfigure(self, config: Config) -> None:
