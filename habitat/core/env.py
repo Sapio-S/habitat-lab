@@ -282,7 +282,7 @@ class Env:
                     for j in range(self.num_agents-i-1):
                         x2 = -start_position[i+j+1][2]
                         y2 = -start_position[i+j+1][0]
-                        if pu.get_l2_distance(x1, x2, y1, y2)<3:
+                        if pu.get_l2_distance(x1, x2, y1, y2)<2:
                             pass
                         else:
                             generate_success = False
