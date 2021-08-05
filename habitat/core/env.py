@@ -6,6 +6,7 @@
 
 import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
+import json
 
 import gym
 import numpy as np
@@ -22,6 +23,7 @@ from habitat.tasks import make_task
 from habitat.utils.geometry_utils import quaternion_to_list
 from habitat_sim import utils
 from onpolicy.envs.habitat.utils import pose as pu
+from icecream import ic
 
 
 class Env:
@@ -119,6 +121,24 @@ class Env:
         self._elapsed_steps = 0
         self._episode_start_time: Optional[float] = None
         self._episode_over = False
+
+        # for fixed start pos
+        if self._config.SIMULATOR.USE_FIXED_START_POS:
+            self.fixed_start_position = []
+            self.fixed_start_rotation = []
+            if "replica" in self._config.SIMULATOR.SCENE:
+                scene_id = self._config.SIMULATOR.SCENE.split("/")[-3]
+            else:
+                scene_id = self._config.SIMULATOR.SCENE.split("/")[-1].split(".")[0]
+            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id + "/start_position.json"
+            with open(filepath,'r',encoding='utf-8') as json_file:
+                self.fixed_start_position = json.load(json_file)
+
+            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id +"/start_rotation.json"
+            with open(filepath,'r',encoding='utf-8') as json_file:
+                self.fixed_start_rotation = json.load(json_file)
+            
+            self.load_num = 0
 
     @property
     def current_episode(self) -> Type[Episode]:
@@ -297,7 +317,12 @@ class Env:
 
         self._config.defrost()
 
-        start_position, start_rotation = self.generate_state()
+        if self._config.SIMULATOR.USE_FIXED_START_POS:
+            start_position = self.fixed_start_position[self.load_num]
+            start_rotation = self.fixed_start_rotation[self.load_num]
+            self.load_num += 1
+        else:
+            start_position, start_rotation = self.generate_state()
 
         self._config.SIMULATOR = self._task.overwrite_sim_config(
             self._config.SIMULATOR, self.current_episode, start_position, start_rotation
