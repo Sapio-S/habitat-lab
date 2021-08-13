@@ -130,11 +130,11 @@ class Env:
                 scene_id = self._config.SIMULATOR.SCENE.split("/")[-3]
             else:
                 scene_id = self._config.SIMULATOR.SCENE.split("/")[-1].split(".")[0]
-            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id + "/start_position.json"
+            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id + "/{}agents/start_position.json".format(self.num_agents)
             with open(filepath,'r',encoding='utf-8') as json_file:
                 self.fixed_start_position = json.load(json_file)
 
-            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id +"/start_rotation.json"
+            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id +"/{}agents/start_rotation.json".format(self.num_agents)
             with open(filepath,'r',encoding='utf-8') as json_file:
                 self.fixed_start_rotation = json.load(json_file)
             
