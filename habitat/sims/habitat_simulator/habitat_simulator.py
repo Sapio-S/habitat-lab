@@ -433,23 +433,24 @@ class HabitatSim(Simulator):
         new_state.position = position
         new_state.rotation = rotation
         
-        if not self.config.USE_DIFFERENT_START_POS and not self.config.USE_SAME_ROTATION:
-            new_rotation = utils.quat_from_coeffs(rotation)
-            new_angle_rotation = utils.quat_to_angle_axis(new_rotation)
+        if not self.config.USE_FIXED_START_POS:
+            if not self.config.USE_DIFFERENT_START_POS and not self.config.USE_SAME_ROTATION: # 180
+                new_rotation = utils.quat_from_coeffs(rotation)
+                new_angle_rotation = utils.quat_to_angle_axis(new_rotation)
+                
+                if new_angle_rotation[0] + (2*np.pi/num_agents)*agent_id > 2*np.pi:  
+                    new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id-2*np.pi, new_angle_rotation[1])
+                else:
+                    new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id, new_angle_rotation[1])
             
-            if new_angle_rotation[0] + (2*np.pi/num_agents)*agent_id > 2*np.pi:  
-                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id-2*np.pi, new_angle_rotation[1])
-            else:
-                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0]+(2*np.pi/num_agents)*agent_id, new_angle_rotation[1])
-        
-        if self.config.USE_RANDOM_ROTATION:
-            new_rotation = utils.quat_from_coeffs(rotation)
-            new_angle_rotation = utils.quat_to_angle_axis(new_rotation)
+            if self.config.USE_RANDOM_ROTATION:
+                new_rotation = utils.quat_from_coeffs(rotation)
+                new_angle_rotation = utils.quat_to_angle_axis(new_rotation)
 
-            if new_angle_rotation[0] + random.random()*2*np.pi > 2*np.pi:  
-                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0] + random.random()*2*np.pi - 2*np.pi, new_angle_rotation[1])
-            else:
-                new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0] + random.random()*2*np.pi, new_angle_rotation[1])
+                if new_angle_rotation[0] + random.random()*2*np.pi > 2*np.pi:  
+                    new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0] + random.random()*2*np.pi - 2*np.pi, new_angle_rotation[1])
+                else:
+                    new_state.rotation = utils.quat_from_angle_axis(new_angle_rotation[0] + random.random()*2*np.pi, new_angle_rotation[1])
 
         # NB: The agent state also contains the sensor states in _absolute_
         # coordinates. In order to set the agent's body to a specific
