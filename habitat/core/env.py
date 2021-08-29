@@ -296,19 +296,20 @@ class Env:
             
             if len(np.unique(start_y)) == 1:
                 generate_success = True
-                for i in range(self.num_agents):
-                    x1 = -start_position[i][2]
-                    y1 = -start_position[i][0]
-                    for j in range(self.num_agents-i-1):
-                        x2 = -start_position[i+j+1][2]
-                        y2 = -start_position[i+j+1][0]
-                        if pu.get_l2_distance(x1, x2, y1, y2)<2:
-                            pass
-                        else:
-                            generate_success = False
+                if not self._config.SIMULATOR.USE_FULL_RAND_STATE:
+                    for i in range(self.num_agents):
+                        x1 = -start_position[i][2]
+                        y1 = -start_position[i][0]
+                        for j in range(self.num_agents-i-1):
+                            x2 = -start_position[i+j+1][2]
+                            y2 = -start_position[i+j+1][0]
+                            if pu.get_l2_distance(x1, x2, y1, y2)<2:
+                                pass
+                            else:
+                                generate_success = False
+                                break
+                        if generate_success == False:
                             break
-                    if generate_success == False:
-                        break
 
         return start_position, start_rotation
 
