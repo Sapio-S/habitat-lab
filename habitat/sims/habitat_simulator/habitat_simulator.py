@@ -270,9 +270,10 @@ class HabitatSim(Simulator):
         )
 
         if action == self.index_stop_action:
-            self._is_episode_active = False
+            if not self.config.CHANGE_AGENTS:
+                self._is_episode_active = False
             sim_obs = self._sim.get_sensor_observations(agent_id)
-        else:
+        else:  
             sim_obs = self._sim.step(action, agent_id)
 
         self._prev_sim_obs = sim_obs
