@@ -97,10 +97,13 @@ class Env:
             self._config.defrost()
             self._config.SIMULATOR.SCENE = self._dataset.episodes[0].scene_id
             self._config.freeze()
+        print("before making sim")
 
         self._sim = make_sim(
             id_sim=self._config.SIMULATOR.TYPE, config=self._config.SIMULATOR
         )
+
+        print("after making sim")
         self._task = make_task(
             self._config.TASK.TYPE,
             task_config=self._config.TASK,

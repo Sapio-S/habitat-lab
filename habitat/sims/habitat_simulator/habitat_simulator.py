@@ -172,7 +172,7 @@ class HabitatSim(Simulator):
                 sensor_cfg.TYPE
             )
             sim_sensors.append(sensor_type(sensor_cfg))
-
+        print("habitat_simulator")
         self._sensor_suite = SensorSuite(sim_sensors)
         self.sim_config = self.create_sim_config(self._sensor_suite)
         self._current_scene = self.sim_config.sim_cfg.scene.id
