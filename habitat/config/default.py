@@ -6,8 +6,14 @@
 
 import onpolicy
 from typing import List, Optional, Union
-
+import yacs.config
 from habitat.config import Config as CN  # type: ignore
+
+class Config(yacs.config.CfgNode):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, new_allowed=True)
+        
+CN = Config
 
 DEFAULT_CONFIG_DIR = "configs/"
 CONFIG_FILE_SEPARATOR = ","
@@ -123,6 +129,7 @@ SENSOR.HEIGHT = 480
 SENSOR.WIDTH = 640
 SENSOR.HFOV = 90  # horizontal field of view in degrees
 SENSOR.POSITION = [0, 1.25, 0]
+SENSOR.ORIENTATION = [0.0, 0.0, 0.0]
 # -----------------------------------------------------------------------------
 # # RGB SENSOR
 # -----------------------------------------------------------------------------

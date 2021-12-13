@@ -204,6 +204,7 @@ class HabitatSim(Simulator):
             )
             sim_sensor_cfg.parameters["hfov"] = str(sensor.config.HFOV)
             sim_sensor_cfg.position = sensor.config.POSITION
+            sim_sensor_cfg.orientation = sensor.config.ORIENTATION
             # TODO(maksymets): Add configure method to Sensor API to avoid
             # accessing child attributes through parent interface
             sim_sensor_cfg.sensor_type = sensor.sim_sensor_type  # type: ignore
