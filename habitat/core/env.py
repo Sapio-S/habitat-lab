@@ -226,9 +226,9 @@ class Env:
         self.current_episode = random.choice(self.episodes) if self._config.DATASET.USE_SAME_SCENE else next(self._episode_iterator)
 
         self.reconfigure(self._config)
-
+        
         observations = self._sim.reset()
-
+        
         for agent_id in range(len(observations)):
             observations[agent_id].update(
                 self.task.sensor_suite.get_observations(

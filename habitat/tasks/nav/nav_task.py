@@ -242,33 +242,6 @@ class IntegratedPointGoalGPSAndCompassSensor(PointGoalSensor):
         )
 
 
-@registry.register_sensor(name="PartRGBSensor")
-class PartRGBSensor(RGBSensor):
-    def __init__(self, config, **kwargs: Any):
-        self.config = config
-        self.angle = config.ANGLE
-        self.sim_sensor_type = habitat_sim.SensorType.COLOR
-        #self.sim_sensor_subtype = habitat_sim.SensorSubType.PINHOLE
-        #self.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
-        super().__init__(config=config)
-
-
-    def _get_uuid(self, *args: Any, **kwargs: Any):
-        return "rgb_" + self.angle
-
-    def _get_observation_space(self, *args: Any, **kwargs: Any):
-        return spaces.Box(
-            low=0,
-            high=255,
-            shape=(self.config.HEIGHT, self.config.WIDTH, 3),
-            dtype=np.uint8,
-        )
-
-    def get_observation(self, obs, *args: Any, **kwargs: Any) -> Any:
-        obs = obs.get(self.uuid, None)
-        import pdb;pdb.set_trace()
-        return obs
-
 @registry.register_sensor(name="PanoramicPartRGBSensor")
 class PanoramicPartRGBSensor(RGBSensor):
     def __init__(self, config, **kwargs: Any):
