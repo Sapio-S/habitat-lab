@@ -9,26 +9,22 @@ https://github.com/JunjH/Revisiting_Single_Depth_Estimation
 Revisiting Single Image Depth Estimation: Toward Higher Resolution Maps With Accurate Object Boundaries
 Junjie Hu and Mete Ozay and Yan Zhang and Takayuki Okatani
 WACV 2019
+
+ResNet code gently borrowed from
+https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py
 """
 
 
 import math
-import os
-import pdb
 
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.nn.parallel
-import torch.utils.model_zoo as model_zoo
 from PIL import Image
-from torchvision import transforms, utils
-
-r"""ResNet code gently borrowed from
-https://github.com/pytorch/vision/blob/master/torchvision/models/py
-"""
-
+from torch import nn as nn
+from torch.nn import functional as F
+from torch.utils import model_zoo as model_zoo
+from torchvision import transforms
 
 accimage = None
 
@@ -178,7 +174,7 @@ class ResNet(nn.Module):
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
         self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
+        for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes))
 
         return nn.Sequential(*layers)
@@ -499,7 +495,7 @@ def _is_numpy_image(img):
     return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
 
 
-class Scale(object):
+class Scale:
     def __init__(self, size):
         self.size = size
 
@@ -514,7 +510,7 @@ class Scale(object):
         return img.resize((ow, oh), interpolation)
 
 
-class CenterCrop(object):
+class CenterCrop:
     def __init__(self, size):
         self.size = size
 
@@ -538,7 +534,7 @@ class CenterCrop(object):
         return image
 
 
-class ToTensor(object):
+class ToTensor:
     r"""Convert a ``PIL.Image`` or ``numpy.ndarray`` to tensor.
     Converts a PIL.Image or numpy.ndarray (H x W x C) in the range
     [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0].
@@ -560,8 +556,8 @@ class ToTensor(object):
             img = torch.from_numpy(pic.transpose((2, 0, 1)))
             return img.float().div(255)
 
-        if accimage is not None and isinstance(pic, accimage.Image):
-            nppic = np.zeros(
+        if accimage is not None and isinstance(pic, accimage.Image):  # type: ignore
+            nppic = np.zeros(  # type: ignore[unreachable]
                 [pic.channels, pic.height, pic.width], dtype=np.float32
             )
             pic.copyto(nppic)
@@ -574,7 +570,7 @@ class ToTensor(object):
             img = torch.from_numpy(np.array(pic, np.int16, copy=False))
         else:
             img = torch.ByteTensor(
-                torch.ByteStorage.from_buffer(pic.tobytes())
+                torch.ByteStorage.from_buffer(pic.tobytes())  # type: ignore
             )
         # PIL image mode: 1, L, P, I, F, RGB, YCbCr, RGBA, CMYK
         if pic.mode == "YCbCr":
@@ -593,7 +589,7 @@ class ToTensor(object):
             return img
 
 
-class Normalize(object):
+class Normalize:
     def __init__(self, mean, std):
         self.mean = mean
         self.std = std
@@ -618,18 +614,19 @@ def define_model(is_resnet, is_densenet, is_senet):
             Encoder, num_features=2048, block_channel=[256, 512, 1024, 2048]
         )
     if is_densenet:
-        original_model = dendensenet161(pretrained=False)
-        Encoder = E_densenet(original_model)
-        model1 = model(
-            Encoder, num_features=2208, block_channel=[192, 384, 1056, 2208]
-        )
+        # original_model = dendensenet161(pretrained=False)
+        # Encoder = E_densenet(original_model)
+        # model1 = model(
+        #    Encoder, num_features=2208, block_channel=[192, 384, 1056, 2208]
+        # )
+        raise NotImplementedError()
     if is_senet:
-        original_model = senet154(pretrained=False)
-        Encoder = E_senet(original_model)
-        model1 = model(
-            Encoder, num_features=2048, block_channel=[256, 512, 1024, 2048]
-        )
-
+        # original_model = senet154(pretrained=False)
+        # Encoder = E_senet(original_model)
+        # model1 = model(
+        #    Encoder, num_features=2048, block_channel=[256, 512, 1024, 2048]
+        # )
+        raise NotImplementedError()
     return model1
 
 
@@ -640,7 +637,7 @@ class MonoDepthEstimator:
         )
         self.model = torch.nn.DataParallel(self.model).cuda()
         cpt = torch.load(checkpoint)
-        if "state_dict" in cpt.keys():
+        if "state_dict" in cpt:
             cpt = cpt["state_dict"]
         self.model.load_state_dict(cpt)
         self.model.eval()

@@ -1,8 +1,8 @@
 ENVIRONMENT:
   MAX_EPISODE_STEPS: 500
 SIMULATOR:
-  AGENT_0:
-    SENSORS: ['RGB_SENSOR']
+  AGENT:
+    SENSORS: ['RGB_SENSOR', 'DEPTH_SENSOR']
   HABITAT_SIM_V0:
     GPU_DEVICE_ID: 0
   RGB_SENSOR:
@@ -13,7 +13,6 @@ SIMULATOR:
     HEIGHT: 256
 TASK:
   TYPE: Nav-v0
-  SUCCESS_DISTANCE: 0.2
 
   SENSORS: ['POINTGOAL_WITH_GPS_COMPASS_SENSOR']
   POINTGOAL_WITH_GPS_COMPASS_SENSOR:
@@ -22,10 +21,9 @@ TASK:
   GOAL_SENSOR_UUID: pointgoal_with_gps_compass
 
   MEASUREMENTS: ['SPL']
-  SPL:
-    TYPE: SPL
+  SUCCESS:
     SUCCESS_DISTANCE: 0.2
 DATASET:
   TYPE: PointNav-v1
   SPLIT: train
-  DATA_PATH: data/datasets/pointnav/mp3d/v1/{split}/{split}.json.gz
+  DATA_PATH: ~/maans/onpolicy/envs/habitat/data/datasets/pointnav/mp3d/v1/{split}/{split}.json.gz

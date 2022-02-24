@@ -5,14 +5,18 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
+import textwrap
 from typing import Dict, List, Optional, Tuple
 
-import cv2
 import imageio
 import numpy as np
 import tqdm
 
+from habitat.core.logging import logger
+from habitat.core.utils import try_cv2_import
 from habitat.utils.visualizations import maps
+
+cv2 = try_cv2_import()
 
 
 def paste_overlapping_image(
@@ -99,7 +103,8 @@ def images_to_video(
     video_name: str,
     fps: int = 10,
     quality: Optional[float] = 5,
-    **kwargs
+    verbose: bool = True,
+    **kwargs,
 ):
     r"""Calls imageio to run FFMPEG on a list of images. For more info on
     parameters, see https://imageio.readthedocs.io/en/stable/format_ffmpeg.html
@@ -118,14 +123,26 @@ def images_to_video(
     assert 0 <= quality <= 10
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    video_name = video_name.replace(" ", "_").replace("\n", "_") + ".mp4"
+    video_name = video_name.replace(" ", "_").replace("\n", "_")
+
+    # File names are not allowed to be over 255 characters
+    video_name_split = video_name.split("/")
+    video_name = "/".join(
+        video_name_split[:-1] + [video_name_split[-1][:251] + ".mp4"]
+    )
+
     writer = imageio.get_writer(
         os.path.join(output_dir, video_name),
         fps=fps,
         quality=quality,
-        **kwargs
+        **kwargs,
     )
-    for im in tqdm.tqdm(images):
+    logger.info(f"Video created: {os.path.join(output_dir, video_name)}")
+    if verbose:
+        images_iter = tqdm.tqdm(images)
+    else:
+        images_iter = images
+    for im in images_iter:
         writer.append_data(im)
     writer.close()
 
@@ -139,13 +156,51 @@ def draw_collision(view: np.ndarray, alpha: float = 0.4) -> np.ndarray:
     Returns:
         A view with collision effect drawn.
     """
-    size = view.shape[0]
-    strip_width = size // 20
-    mask = np.ones((size, size))
+    strip_width = view.shape[0] // 20
+    mask = np.ones(view.shape)
     mask[strip_width:-strip_width, strip_width:-strip_width] = 0
     mask = mask == 1
     view[mask] = (alpha * np.array([255, 0, 0]) + (1.0 - alpha) * view)[mask]
     return view
+
+
+def tile_images(render_obs_images: List[np.ndarray]) -> np.ndarray:
+    """Tiles multiple images of non-equal size to a single image. Images are
+    tiled into columns making the returned image wider than tall.
+    """
+    # Get the images in descending order of vertical height.
+    render_obs_images = sorted(
+        render_obs_images, key=lambda x: x.shape[0], reverse=True
+    )
+    img_cols = [[render_obs_images[0]]]
+    max_height = render_obs_images[0].shape[0]
+    cur_y = 0.0
+    # Arrange the images in columns with the largest image to the left.
+    col = []
+    for im in render_obs_images[1:]:
+        if cur_y + im.shape[0] <= max_height:
+            col.append(im)
+            cur_y += im.shape[0]
+        else:
+            img_cols.append(col)
+            col = [im]
+            cur_y = im.shape[0]
+    img_cols.append(col)
+    col_widths = [max(col_ele.shape[1] for col_ele in col) for col in img_cols]
+    # Get the total width of all the columns put together.
+    total_width = sum(col_widths)
+
+    # Tile the images, pasting the columns side by side.
+    final_im = np.zeros(
+        (max_height, total_width, 3), dtype=render_obs_images[0].dtype
+    )
+    cur_x = 0
+    for i in range(len(img_cols)):
+        next_x = cur_x + col_widths[i]
+        total_col_im = np.concatenate(img_cols[i], axis=0)
+        final_im[: total_col_im.shape[0], cur_x:next_x] = total_col_im
+        cur_x = next_x
+    return final_im
 
 
 def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
@@ -159,44 +214,87 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
     Returns:
         generated image of a single frame.
     """
-    observation_size = observation["rgb"].shape[0]
-    egocentric_view = observation["rgb"][:, :, :3]
+    render_obs_images: List[np.ndarray] = []
+    for sensor_name in observation:
+        if "rgb" in sensor_name:
+            rgb = observation[sensor_name]
+            if not isinstance(rgb, np.ndarray):
+                rgb = rgb.cpu().numpy()
+
+            render_obs_images.append(rgb)
+        elif "depth" in sensor_name:
+            depth_map = observation[sensor_name].squeeze() * 255.0
+            if not isinstance(depth_map, np.ndarray):
+                depth_map = depth_map.cpu().numpy()
+
+            depth_map = depth_map.astype(np.uint8)
+            depth_map = np.stack([depth_map for _ in range(3)], axis=2)
+            render_obs_images.append(depth_map)
+
+    # add image goal if observation has image_goal info
+    if "imagegoal" in observation:
+        rgb = observation["imagegoal"]
+        if not isinstance(rgb, np.ndarray):
+            rgb = rgb.cpu().numpy()
+
+        render_obs_images.append(rgb)
+
+    assert (
+        len(render_obs_images) > 0
+    ), "Expected at least one visual sensor enabled."
+
+    shapes_are_equal = len(set(x.shape for x in render_obs_images)) == 1
+    if not shapes_are_equal:
+        render_frame = tile_images(render_obs_images)
+    else:
+        render_frame = np.concatenate(render_obs_images, axis=1)
+
     # draw collision
     if "collisions" in info and info["collisions"]["is_collision"]:
-        egocentric_view = draw_collision(egocentric_view)
-
-    # draw depth map if observation has depth info
-    if "depth" in observation:
-        depth_map = (observation["depth"].squeeze() * 255).astype(np.uint8)
-        depth_map = np.stack([depth_map for _ in range(3)], axis=2)
-
-        egocentric_view = np.concatenate((egocentric_view, depth_map), axis=1)
-
-    frame = egocentric_view
+        render_frame = draw_collision(render_frame)
 
     if "top_down_map" in info:
-        top_down_map = info["top_down_map"]["map"]
-        top_down_map = maps.colorize_topdown_map(top_down_map)
-        map_agent_pos = info["top_down_map"]["agent_map_coord"]
-        top_down_map = maps.draw_agent(
-            image=top_down_map,
-            agent_center_coord=map_agent_pos,
-            agent_rotation=info["top_down_map"]["agent_angle"],
-            agent_radius_px=top_down_map.shape[0] // 16,
+        top_down_map = maps.colorize_draw_agent_and_fit_to_height(
+            info["top_down_map"], render_frame.shape[0]
         )
+        render_frame = np.concatenate((render_frame, top_down_map), axis=1)
+    return render_frame
 
-        if top_down_map.shape[0] > top_down_map.shape[1]:
-            top_down_map = np.rot90(top_down_map, 1)
 
-        # scale top down map to align with rgb view
-        old_h, old_w, _ = top_down_map.shape
-        top_down_height = observation_size
-        top_down_width = int(float(top_down_height) / old_h * old_w)
-        # cv2 resize (dsize is width first)
-        top_down_map = cv2.resize(
-            top_down_map,
-            (top_down_width, top_down_height),
-            interpolation=cv2.INTER_CUBIC,
+def append_text_to_image(image: np.ndarray, text: str):
+    r"""Appends text underneath an image of size (height, width, channels).
+    The returned image has white text on a black background. Uses textwrap to
+    split long text into multiple lines.
+    Args:
+        image: the image to put text underneath
+        text: a string to display
+    Returns:
+        A new image with text inserted underneath the input image
+    """
+    h, w, c = image.shape
+    font_size = 0.5
+    font_thickness = 1
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    blank_image = np.zeros(image.shape, dtype=np.uint8)
+
+    char_size = cv2.getTextSize(" ", font, font_size, font_thickness)[0]
+    wrapped_text = textwrap.wrap(text, width=int(w / char_size[0]))
+
+    y = 0
+    for line in wrapped_text:
+        textsize = cv2.getTextSize(line, font, font_size, font_thickness)[0]
+        y += textsize[1] + 10
+        x = 10
+        cv2.putText(
+            blank_image,
+            line,
+            (x, y),
+            font,
+            font_size,
+            (255, 255, 255),
+            font_thickness,
+            lineType=cv2.LINE_AA,
         )
-        frame = np.concatenate((egocentric_view, top_down_map), axis=1)
-    return frame
+    text_image = blank_image[0 : y + 10, 0:w]
+    final = np.concatenate((image, text_image), axis=0)
+    return final

@@ -4,11 +4,11 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+from matplotlib import pyplot as plt
+from torch import nn as nn
+from torch.nn import functional as F
 
 from habitat_baselines.slambased.utils import generate_2dgrid
 
@@ -71,7 +71,7 @@ class DifferentiableStarPlanner(nn.Module):
         preprocess=False,
         beta=100,
         connectivity="eight",
-        device=torch.device("cpu"),
+        device=torch.device("cpu"),  # noqa: B008
         **kwargs
     ):
         super(DifferentiableStarPlanner, self).__init__()
@@ -301,7 +301,7 @@ class DifferentiableStarPlanner(nn.Module):
             ) or (self.g_map.view(-1)[goal_idx].item() >= 0.1 * self.inf)
             rad += 1
         if not stopped_by_max_iter:
-            for i in range(additional_steps):
+            for _ in range(additional_steps):
                 # now propagating beyong start point
                 self.g_map = torch.min(
                     self.g_map,
@@ -323,7 +323,7 @@ class DifferentiableStarPlanner(nn.Module):
         if return_path:
             out_path, cost = self.reconstruct_path()
             return out_path, cost
-        return
+        return None
 
     def calculate_local_path_costs(self, non_obstacle_cost_map=None):
         coords = self.coords
@@ -501,7 +501,6 @@ class DifferentiableStarPlanner(nn.Module):
                 print(self.g_map[0, 0, y - 2 : y + 3, x - 2 : x + 3])
                 print("loop in out_path", node_coords)
                 raise ValueError("loop in out_path")
-                return out_path, cost
             out_path.append(node_coords)
             done = torch.norm(node_coords - start_coords.cpu(), 2).item() < 0.3
             count1 += 1

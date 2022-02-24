@@ -4,25 +4,58 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import abc
+from typing import Union
 
-import numpy as np
 import torch
-import torch.nn as nn
+from gym import spaces
+from torch import nn as nn
 
-from habitat_baselines.common.utils import CategoricalNet, Flatten
-from habitat_baselines.rl.models.rnn_state_encoder import RNNStateEncoder
+from habitat.config import Config
+from habitat.tasks.nav.nav import (
+    ImageGoalSensor,
+    IntegratedPointGoalGPSAndCompassSensor,
+    PointGoalSensor,
+)
+from habitat_baselines.common.baseline_registry import baseline_registry
+from habitat_baselines.rl.models.rnn_state_encoder import (
+    build_rnn_state_encoder,
+)
 from habitat_baselines.rl.models.simple_cnn import SimpleCNN
+from habitat_baselines.utils.common import CategoricalNet, GaussianNet
 
 
-class Policy(nn.Module):
-    def __init__(self, net, dim_actions):
+class Policy(nn.Module, metaclass=abc.ABCMeta):
+    action_distribution: nn.Module
+
+    def __init__(self, net, dim_actions, policy_config=None):
         super().__init__()
         self.net = net
         self.dim_actions = dim_actions
+        self.action_distribution: Union[CategoricalNet, GaussianNet]
 
-        self.action_distribution = CategoricalNet(
-            self.net.output_size, self.dim_actions
-        )
+        if policy_config is None:
+            self.action_distribution_type = "categorical"
+        else:
+            self.action_distribution_type = (
+                policy_config.action_distribution_type
+            )
+
+        if self.action_distribution_type == "categorical":
+            self.action_distribution = CategoricalNet(
+                self.net.output_size, self.dim_actions
+            )
+        elif self.action_distribution_type == "gaussian":
+            self.action_distribution = GaussianNet(
+                self.net.output_size,
+                self.dim_actions,
+                policy_config.ACTION_DIST,
+            )
+        else:
+            ValueError(
+                f"Action distribution {self.action_distribution_type}"
+                "not supported."
+            )
+
         self.critic = CriticHead(self.net.output_size)
 
     def forward(self, *x):
@@ -43,7 +76,10 @@ class Policy(nn.Module):
         value = self.critic(features)
 
         if deterministic:
-            action = distribution.mode()
+            if self.action_distribution_type == "categorical":
+                action = distribution.mode()
+            elif self.action_distribution_type == "gaussian":
+                action = distribution.mean
         else:
             action = distribution.sample()
 
@@ -67,9 +103,14 @@ class Policy(nn.Module):
         value = self.critic(features)
 
         action_log_probs = distribution.log_probs(action)
-        distribution_entropy = distribution.entropy().mean()
+        distribution_entropy = distribution.entropy()
 
         return value, action_log_probs, distribution_entropy, rnn_hidden_states
+
+    @classmethod
+    @abc.abstractmethod
+    def from_config(cls, config, observation_space, action_space):
+        pass
 
 
 class CriticHead(nn.Module):
@@ -83,21 +124,32 @@ class CriticHead(nn.Module):
         return self.fc(x)
 
 
+@baseline_registry.register_policy
 class PointNavBaselinePolicy(Policy):
     def __init__(
         self,
-        observation_space,
+        observation_space: spaces.Dict,
         action_space,
-        goal_sensor_uuid,
-        hidden_size=512,
+        hidden_size: int = 512,
+        **kwargs,
     ):
         super().__init__(
-            PointNavBaselineNet(
+            PointNavBaselineNet(  # type: ignore
                 observation_space=observation_space,
                 hidden_size=hidden_size,
-                goal_sensor_uuid=goal_sensor_uuid,
+                **kwargs,
             ),
             action_space.n,
+        )
+
+    @classmethod
+    def from_config(
+        cls, config: Config, observation_space: spaces.Dict, action_space
+    ):
+        return cls(
+            observation_space=observation_space,
+            action_space=action_space,
+            hidden_size=config.RL.PPO.hidden_size,
         )
 
 
@@ -127,17 +179,38 @@ class PointNavBaselineNet(Net):
     goal vector with CNN's output and passes that through RNN.
     """
 
-    def __init__(self, observation_space, hidden_size, goal_sensor_uuid):
+    def __init__(
+        self,
+        observation_space: spaces.Dict,
+        hidden_size: int,
+    ):
         super().__init__()
-        self.goal_sensor_uuid = goal_sensor_uuid
-        self._n_input_goal = observation_space.spaces[
-            self.goal_sensor_uuid
-        ].shape[0]
+
+        if (
+            IntegratedPointGoalGPSAndCompassSensor.cls_uuid
+            in observation_space.spaces
+        ):
+            self._n_input_goal = observation_space.spaces[
+                IntegratedPointGoalGPSAndCompassSensor.cls_uuid
+            ].shape[0]
+        elif PointGoalSensor.cls_uuid in observation_space.spaces:
+            self._n_input_goal = observation_space.spaces[
+                PointGoalSensor.cls_uuid
+            ].shape[0]
+        elif ImageGoalSensor.cls_uuid in observation_space.spaces:
+            goal_observation_space = spaces.Dict(
+                {"rgb": observation_space.spaces[ImageGoalSensor.cls_uuid]}
+            )
+            self.goal_visual_encoder = SimpleCNN(
+                goal_observation_space, hidden_size
+            )
+            self._n_input_goal = hidden_size
+
         self._hidden_size = hidden_size
 
         self.visual_encoder = SimpleCNN(observation_space, hidden_size)
 
-        self.state_encoder = RNNStateEncoder(
+        self.state_encoder = build_rnn_state_encoder(
             (0 if self.is_blind else self._hidden_size) + self._n_input_goal,
             self._hidden_size,
         )
@@ -156,18 +229,27 @@ class PointNavBaselineNet(Net):
     def num_recurrent_layers(self):
         return self.state_encoder.num_recurrent_layers
 
-    def get_target_encoding(self, observations):
-        return observations[self.goal_sensor_uuid]
-
     def forward(self, observations, rnn_hidden_states, prev_actions, masks):
-        target_encoding = self.get_target_encoding(observations)
+        if IntegratedPointGoalGPSAndCompassSensor.cls_uuid in observations:
+            target_encoding = observations[
+                IntegratedPointGoalGPSAndCompassSensor.cls_uuid
+            ]
+
+        elif PointGoalSensor.cls_uuid in observations:
+            target_encoding = observations[PointGoalSensor.cls_uuid]
+        elif ImageGoalSensor.cls_uuid in observations:
+            image_goal = observations[ImageGoalSensor.cls_uuid]
+            target_encoding = self.goal_visual_encoder({"rgb": image_goal})
+
         x = [target_encoding]
 
         if not self.is_blind:
             perception_embed = self.visual_encoder(observations)
             x = [perception_embed] + x
 
-        x = torch.cat(x, dim=1)
-        x, rnn_hidden_states = self.state_encoder(x, rnn_hidden_states, masks)
+        x_out = torch.cat(x, dim=1)
+        x_out, rnn_hidden_states = self.state_encoder(
+            x_out, rnn_hidden_states, masks
+        )
 
-        return x, rnn_hidden_states
+        return x_out, rnn_hidden_states

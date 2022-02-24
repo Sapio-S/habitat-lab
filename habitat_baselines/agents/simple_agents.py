@@ -7,104 +7,107 @@
 
 import argparse
 from math import pi
+from typing import Dict, Union
 
 import numpy as np
+from numpy import bool_, int64, ndarray
 
 import habitat
-from habitat import SimulatorActions
 from habitat.config.default import get_config
+from habitat.core.simulator import Observations
+from habitat.sims.habitat_simulator.actions import HabitatSimActions
 
 
 class RandomAgent(habitat.Agent):
-    def __init__(self, success_distance, goal_sensor_uuid):
+    def __init__(self, success_distance: float, goal_sensor_uuid: str) -> None:
         self.dist_threshold_to_stop = success_distance
         self.goal_sensor_uuid = goal_sensor_uuid
 
-    def reset(self):
+    def reset(self) -> None:
         pass
 
-    def is_goal_reached(self, observations):
+    def is_goal_reached(self, observations: Observations) -> bool_:
         dist = observations[self.goal_sensor_uuid][0]
         return dist <= self.dist_threshold_to_stop
 
-    def act(self, observations):
+    def act(self, observations: Observations) -> Dict[str, int64]:
         if self.is_goal_reached(observations):
-            action = SimulatorActions.STOP
+            action = HabitatSimActions.STOP
         else:
             action = np.random.choice(
                 [
-                    SimulatorActions.MOVE_FORWARD,
-                    SimulatorActions.TURN_LEFT,
-                    SimulatorActions.TURN_RIGHT,
+                    HabitatSimActions.MOVE_FORWARD,
+                    HabitatSimActions.TURN_LEFT,
+                    HabitatSimActions.TURN_RIGHT,
                 ]
             )
-        return action
+        return {"action": action}
 
 
 class ForwardOnlyAgent(RandomAgent):
-    def act(self, observations):
+    def act(self, observations: Observations) -> Dict[str, int]:
         if self.is_goal_reached(observations):
-            action = SimulatorActions.STOP
+            action = HabitatSimActions.STOP
         else:
-            action = SimulatorActions.MOVE_FORWARD
-        return action
+            action = HabitatSimActions.MOVE_FORWARD
+        return {"action": action}
 
 
 class RandomForwardAgent(RandomAgent):
-    def __init__(self, success_distance, goal_sensor_uuid):
+    def __init__(self, success_distance: float, goal_sensor_uuid: str) -> None:
         super().__init__(success_distance, goal_sensor_uuid)
         self.FORWARD_PROBABILITY = 0.8
 
-    def act(self, observations):
+    def act(self, observations: Observations) -> Dict[str, Union[int, int64]]:
         if self.is_goal_reached(observations):
-            action = SimulatorActions.STOP
+            action = HabitatSimActions.STOP
         else:
             if np.random.uniform(0, 1, 1) < self.FORWARD_PROBABILITY:
-                action = SimulatorActions.MOVE_FORWARD
+                action = HabitatSimActions.MOVE_FORWARD
             else:
                 action = np.random.choice(
-                    [SimulatorActions.TURN_LEFT, SimulatorActions.TURN_RIGHT]
+                    [HabitatSimActions.TURN_LEFT, HabitatSimActions.TURN_RIGHT]
                 )
 
-        return action
+        return {"action": action}
 
 
 class GoalFollower(RandomAgent):
-    def __init__(self, success_distance, goal_sensor_uuid):
+    def __init__(self, success_distance: float, goal_sensor_uuid: str) -> None:
         super().__init__(success_distance, goal_sensor_uuid)
         self.pos_th = self.dist_threshold_to_stop
         self.angle_th = float(np.deg2rad(15))
         self.random_prob = 0
 
-    def normalize_angle(self, angle):
+    def normalize_angle(self, angle: ndarray) -> ndarray:
         if angle < -pi:
             angle = 2.0 * pi + angle
         if angle > pi:
             angle = -2.0 * pi + angle
         return angle
 
-    def turn_towards_goal(self, angle_to_goal):
+    def turn_towards_goal(self, angle_to_goal: ndarray) -> int:
         if angle_to_goal > pi or (
             (angle_to_goal < 0) and (angle_to_goal > -pi)
         ):
-            action = SimulatorActions.TURN_RIGHT
+            action = HabitatSimActions.TURN_RIGHT
         else:
-            action = SimulatorActions.TURN_LEFT
+            action = HabitatSimActions.TURN_LEFT
         return action
 
-    def act(self, observations):
+    def act(self, observations: Observations) -> Dict[str, int]:
         if self.is_goal_reached(observations):
-            action = SimulatorActions.STOP
+            action = HabitatSimActions.STOP
         else:
             angle_to_goal = self.normalize_angle(
                 np.array(observations[self.goal_sensor_uuid][1])
             )
             if abs(angle_to_goal) < self.angle_th:
-                action = SimulatorActions.MOVE_FORWARD
+                action = HabitatSimActions.MOVE_FORWARD
             else:
                 action = self.turn_towards_goal(angle_to_goal)
 
-        return action
+        return {"action": action}
 
 
 def get_all_subclasses(cls):

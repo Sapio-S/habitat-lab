@@ -5,15 +5,22 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-import cv2
 import imageio
 import numpy as np
 import scipy.ndimage
 
-from habitat.core.simulator import Simulator
+from habitat.core.utils import try_cv2_import
 from habitat.utils.visualizations import utils
+
+try:
+    from habitat.sims.habitat_simulator.habitat_simulator import HabitatSim
+except ImportError:
+    pass
+
+cv2 = try_cv2_import()
+
 
 AGENT_SPRITE = imageio.imread(
     os.path.join(
@@ -24,9 +31,6 @@ AGENT_SPRITE = imageio.imread(
     )
 )
 AGENT_SPRITE = np.ascontiguousarray(np.flipud(AGENT_SPRITE))
-COORDINATE_EPSILON = 1e-6
-COORDINATE_MIN = -62.3241 - COORDINATE_EPSILON
-COORDINATE_MAX = 90.0399 + COORDINATE_EPSILON
 
 MAP_INVALID_POINT = 0
 MAP_VALID_POINT = 1
@@ -34,16 +38,20 @@ MAP_BORDER_INDICATOR = 2
 MAP_SOURCE_POINT_INDICATOR = 4
 MAP_TARGET_POINT_INDICATOR = 6
 MAP_SHORTEST_PATH_COLOR = 7
+MAP_VIEW_POINT_INDICATOR = 8
+MAP_TARGET_BOUNDING_BOX = 9
 TOP_DOWN_MAP_COLORS = np.full((256, 3), 150, dtype=np.uint8)
 TOP_DOWN_MAP_COLORS[10:] = cv2.applyColorMap(
     np.arange(246, dtype=np.uint8), cv2.COLORMAP_JET
 ).squeeze(1)[:, ::-1]
-TOP_DOWN_MAP_COLORS[MAP_INVALID_POINT] = [255, 255, 255]
-TOP_DOWN_MAP_COLORS[MAP_VALID_POINT] = [150, 150, 150]
-TOP_DOWN_MAP_COLORS[MAP_BORDER_INDICATOR] = [50, 50, 50]
-TOP_DOWN_MAP_COLORS[MAP_SOURCE_POINT_INDICATOR] = [0, 0, 200]
-TOP_DOWN_MAP_COLORS[MAP_TARGET_POINT_INDICATOR] = [200, 0, 0]
-TOP_DOWN_MAP_COLORS[MAP_SHORTEST_PATH_COLOR] = [0, 200, 0]
+TOP_DOWN_MAP_COLORS[MAP_INVALID_POINT] = [255, 255, 255]  # White
+TOP_DOWN_MAP_COLORS[MAP_VALID_POINT] = [150, 150, 150]  # Light Grey
+TOP_DOWN_MAP_COLORS[MAP_BORDER_INDICATOR] = [50, 50, 50]  # Grey
+TOP_DOWN_MAP_COLORS[MAP_SOURCE_POINT_INDICATOR] = [0, 0, 200]  # Blue
+TOP_DOWN_MAP_COLORS[MAP_TARGET_POINT_INDICATOR] = [200, 0, 0]  # Red
+TOP_DOWN_MAP_COLORS[MAP_SHORTEST_PATH_COLOR] = [0, 200, 0]  # Green
+TOP_DOWN_MAP_COLORS[MAP_VIEW_POINT_INDICATOR] = [245, 150, 150]  # Light Red
+TOP_DOWN_MAP_COLORS[MAP_TARGET_BOUNDING_BOX] = [0, 175, 0]  # Green
 
 
 def draw_agent(
@@ -130,8 +138,8 @@ def pointnav_draw_target_birdseye_view(
 
     goal_agent_dist = np.linalg.norm(agent_position - goal_position, 2)
 
-    goal_distance_padding = max(
-        2, 2 ** np.ceil(np.log(max(1e-6, goal_agent_dist)) / np.log(2))
+    goal_distance_padding = np.maximum(
+        2, 2 ** np.ceil(np.log(np.maximum(1e-6, goal_agent_dist)) / np.log(2))
     )
     movement_scale = 1.0 / goal_distance_padding
     half_res = resolution_px // 2
@@ -180,42 +188,63 @@ def pointnav_draw_target_birdseye_view(
 def to_grid(
     realworld_x: float,
     realworld_y: float,
-    coordinate_min: float,
-    coordinate_max: float,
     grid_resolution: Tuple[int, int],
+    sim: Optional["HabitatSim"] = None,
+    pathfinder=None,
 ) -> Tuple[int, int]:
     r"""Return gridworld index of realworld coordinates assuming top-left corner
     is the origin. The real world coordinates of lower left corner are
     (coordinate_min, coordinate_min) and of top right corner are
     (coordinate_max, coordinate_max)
     """
+    if sim is None and pathfinder is None:
+        raise RuntimeError(
+            "Must provide either a simulator or pathfinder instance"
+        )
+
+    if pathfinder is None:
+        pathfinder = sim.pathfinder
+
+    lower_bound, upper_bound = pathfinder.get_bounds()
+
     grid_size = (
-        (coordinate_max - coordinate_min) / grid_resolution[0],
-        (coordinate_max - coordinate_min) / grid_resolution[1],
+        abs(upper_bound[2] - lower_bound[2]) / grid_resolution[0],
+        abs(upper_bound[0] - lower_bound[0]) / grid_resolution[1],
     )
-    grid_x = int((coordinate_max - realworld_x) / grid_size[0])
-    grid_y = int((realworld_y - coordinate_min) / grid_size[1])
+    grid_x = int((realworld_x - lower_bound[2]) / grid_size[0])
+    grid_y = int((realworld_y - lower_bound[0]) / grid_size[1])
     return grid_x, grid_y
 
 
 def from_grid(
     grid_x: int,
     grid_y: int,
-    coordinate_min: float,
-    coordinate_max: float,
     grid_resolution: Tuple[int, int],
+    sim: Optional["HabitatSim"] = None,
+    pathfinder=None,
 ) -> Tuple[float, float]:
     r"""Inverse of _to_grid function. Return real world coordinate from
     gridworld assuming top-left corner is the origin. The real world
     coordinates of lower left corner are (coordinate_min, coordinate_min) and
     of top right corner are (coordinate_max, coordinate_max)
     """
+
+    if sim is None and pathfinder is None:
+        raise RuntimeError(
+            "Must provide either a simulator or pathfinder instance"
+        )
+
+    if pathfinder is None:
+        pathfinder = sim.pathfinder
+
+    lower_bound, upper_bound = pathfinder.get_bounds()
+
     grid_size = (
-        (coordinate_max - coordinate_min) / grid_resolution[0],
-        (coordinate_max - coordinate_min) / grid_resolution[1],
+        abs(upper_bound[2] - lower_bound[2]) / grid_resolution[0],
+        abs(upper_bound[0] - lower_bound[0]) / grid_resolution[1],
     )
-    realworld_x = coordinate_max - grid_x * grid_size[0]
-    realworld_y = coordinate_min + grid_y * grid_size[1]
+    realworld_x = lower_bound[2] + grid_x * grid_size[0]
+    realworld_y = lower_bound[0] + grid_y * grid_size[1]
     return realworld_x, realworld_y
 
 
@@ -241,90 +270,81 @@ def _outline_border(top_down_map):
     top_down_map[1:][up_down_nav_block] = MAP_BORDER_INDICATOR
 
 
+def calculate_meters_per_pixel(
+    map_resolution: int, sim: Optional["HabitatSim"] = None, pathfinder=None
+):
+    r"""Calculate the meters_per_pixel for a given map resolution"""
+    if sim is None and pathfinder is None:
+        raise RuntimeError(
+            "Must provide either a simulator or pathfinder instance"
+        )
+
+    if pathfinder is None:
+        pathfinder = sim.pathfinder
+
+    lower_bound, upper_bound = pathfinder.get_bounds()
+    return min(
+        abs(upper_bound[coord] - lower_bound[coord]) / map_resolution
+        for coord in [0, 2]
+    )
+
+
 def get_topdown_map(
-    sim: Simulator,
-    map_resolution: Tuple[int, int] = (1250, 1250),
-    num_samples: int = 20000,
+    pathfinder,
+    height: float,
+    map_resolution: int = 1024,
     draw_border: bool = True,
+    meters_per_pixel: Optional[float] = None,
 ) -> np.ndarray:
     r"""Return a top-down occupancy map for a sim. Note, this only returns valid
     values for whatever floor the agent is currently on.
 
-    Args:
-        sim: The simulator.
-        map_resolution: The resolution of map which will be computed and
-            returned.
-        num_samples: The number of random navigable points which will be
-            initially
-            sampled. For large environments it may need to be increased.
-        draw_border: Whether to outline the border of the occupied spaces.
+    :param pathfinder: A habitat-sim pathfinder instances to get the map from
+    :param height: The height in the environment to make the topdown map
+    :param map_resolution: Length of the longest side of the map.  Used to calculate :p:`meters_per_pixel`
+    :param draw_border: Whether or not to draw a border
+    :param meters_per_pixel: Overrides map_resolution an
 
-    Returns:
-        Image containing 0 if occupied, 1 if unoccupied, and 2 if border (if
+    :return: Image containing 0 if occupied, 1 if unoccupied, and 2 if border (if
         the flag is set).
     """
-    top_down_map = np.zeros(map_resolution, dtype=np.uint8)
-    border_padding = 3
 
-    start_height = sim.get_agent_state().position[1]
-
-    # Use sampling to find the extrema points that might be navigable.
-    range_x = (map_resolution[0], 0)
-    range_y = (map_resolution[1], 0)
-    for _ in range(num_samples):
-        point = sim.sample_navigable_point()
-        # Check if on same level as original
-        if np.abs(start_height - point[1]) > 0.5:
-            continue
-        g_x, g_y = to_grid(
-            point[0], point[2], COORDINATE_MIN, COORDINATE_MAX, map_resolution
+    if meters_per_pixel is None:
+        meters_per_pixel = calculate_meters_per_pixel(
+            map_resolution, pathfinder=pathfinder
         )
-        range_x = (min(range_x[0], g_x), max(range_x[1], g_x))
-        range_y = (min(range_y[0], g_y), max(range_y[1], g_y))
 
-    # Pad the range just in case not enough points were sampled to get the true
-    # extrema.
-    padding = int(np.ceil(map_resolution[0] / 125))
-    range_x = (
-        max(range_x[0] - padding, 0),
-        min(range_x[-1] + padding + 1, top_down_map.shape[0]),
-    )
-    range_y = (
-        max(range_y[0] - padding, 0),
-        min(range_y[-1] + padding + 1, top_down_map.shape[1]),
-    )
-
-    # Search over grid for valid points.
-    for ii in range(range_x[0], range_x[1]):
-        for jj in range(range_y[0], range_y[1]):
-            realworld_x, realworld_y = from_grid(
-                ii, jj, COORDINATE_MIN, COORDINATE_MAX, map_resolution
-            )
-            valid_point = sim.is_navigable(
-                [realworld_x, start_height, realworld_y]
-            )
-            top_down_map[ii, jj] = (
-                MAP_VALID_POINT if valid_point else MAP_INVALID_POINT
-            )
+    top_down_map = pathfinder.get_topdown_view(
+        meters_per_pixel=meters_per_pixel, height=height
+    ).astype(np.uint8)
 
     # Draw border if necessary
     if draw_border:
-        # Recompute range in case padding added any more values.
-        range_x = np.where(np.any(top_down_map, axis=1))[0]
-        range_y = np.where(np.any(top_down_map, axis=0))[0]
-        range_x = (
-            max(range_x[0] - border_padding, 0),
-            min(range_x[-1] + border_padding + 1, top_down_map.shape[0]),
-        )
-        range_y = (
-            max(range_y[0] - border_padding, 0),
-            min(range_y[-1] + border_padding + 1, top_down_map.shape[1]),
-        )
+        _outline_border(top_down_map)
 
-        _outline_border(
-            top_down_map[range_x[0] : range_x[1], range_y[0] : range_y[1]]
-        )
-    return top_down_map
+    return np.ascontiguousarray(top_down_map)
+
+
+# this agent_id is not related to MAANS
+def get_topdown_map_from_sim(
+    sim: "HabitatSim",
+    map_resolution: int = 1024,
+    draw_border: bool = True,
+    meters_per_pixel: Optional[float] = None,
+    agent_id: int = 0,
+) -> np.ndarray:
+    r"""Wrapper around :py:`get_topdown_map` that retrieves that pathfinder and heigh from the current simulator
+
+    :param sim: Simulator instance.
+    :param agent_id: The agent ID
+    """
+    return get_topdown_map(
+        sim.pathfinder,
+        sim.get_agent(agent_id).state.position[1],
+        map_resolution,
+        draw_border,
+        meters_per_pixel,
+    )
 
 
 def colorize_topdown_map(
@@ -333,16 +353,16 @@ def colorize_topdown_map(
     fog_of_war_desat_amount: float = 0.5,
 ) -> np.ndarray:
     r"""Convert the top down map to RGB based on the indicator values.
-        Args:
-            top_down_map: A non-colored version of the map.
-            fog_of_war_mask: A mask used to determine which parts of the 
-                top_down_map are visible
-                Non-visible parts will be desaturated
-            fog_of_war_desat_amount: Amount to desaturate the color of unexplored areas
-                Decreasing this value will make unexplored areas darker
-                Default: 0.5
-        Returns:
-            A colored version of the top-down map.
+    Args:
+        top_down_map: A non-colored version of the map.
+        fog_of_war_mask: A mask used to determine which parts of the
+            top_down_map are visible
+            Non-visible parts will be desaturated
+        fog_of_war_desat_amount: Amount to desaturate the color of unexplored areas
+            Decreasing this value will make unexplored areas darker
+            Default: 0.5
+    Returns:
+        A colored version of the top-down map.
     """
     _map = TOP_DOWN_MAP_COLORS[top_down_map]
 
@@ -360,16 +380,61 @@ def colorize_topdown_map(
 
 def draw_path(
     top_down_map: np.ndarray,
-    path_points: List[Tuple],
-    color: int,
+    path_points: Sequence[Tuple],
+    color: int = 10,
     thickness: int = 2,
 ) -> None:
     r"""Draw path on top_down_map (in place) with specified color.
-        Args:
-            top_down_map: A colored version of the map.
-            color: color code of the path, from TOP_DOWN_MAP_COLORS.
-            path_points: list of points that specify the path to be drawn
-            thickness: thickness of the path.
+    Args:
+        top_down_map: A colored version of the map.
+        color: color code of the path, from TOP_DOWN_MAP_COLORS.
+        path_points: list of points that specify the path to be drawn
+        thickness: thickness of the path.
     """
     for prev_pt, next_pt in zip(path_points[:-1], path_points[1:]):
-        cv2.line(top_down_map, prev_pt, next_pt, color, thickness=thickness)
+        # Swapping x y
+        cv2.line(
+            top_down_map,
+            prev_pt[::-1],
+            next_pt[::-1],
+            color,
+            thickness=thickness,
+        )
+
+
+def colorize_draw_agent_and_fit_to_height(
+    topdown_map_info: Dict[str, Any], output_height: int
+):
+    r"""Given the output of the TopDownMap measure, colorizes the map, draws the agent,
+    and fits to a desired output height
+
+    :param topdown_map_info: The output of the TopDownMap measure
+    :param output_height: The desired output height
+    """
+    top_down_map = topdown_map_info["map"]
+    top_down_map = colorize_topdown_map(
+        top_down_map, topdown_map_info["fog_of_war_mask"]
+    )
+    map_agent_pos = topdown_map_info["agent_map_coord"]
+    top_down_map = draw_agent(
+        image=top_down_map,
+        agent_center_coord=map_agent_pos,
+        agent_rotation=topdown_map_info["agent_angle"],
+        agent_radius_px=min(top_down_map.shape[0:2]) // 32,
+    )
+
+    if top_down_map.shape[0] > top_down_map.shape[1]:
+        top_down_map = np.rot90(top_down_map, 1)
+
+    # scale top down map to align with rgb view
+    old_h, old_w, _ = top_down_map.shape
+    top_down_height = output_height
+    top_down_width = int(float(top_down_height) / old_h * old_w)
+    # cv2 resize (dsize is width first)
+    top_down_map = cv2.resize(
+        top_down_map,
+        (top_down_width, top_down_height),
+        interpolation=cv2.INTER_CUBIC,
+    )
+
+    return top_down_map

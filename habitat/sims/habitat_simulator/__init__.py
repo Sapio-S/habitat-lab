@@ -1,10 +1,14 @@
 from habitat.core.registry import registry
 from habitat.core.simulator import Simulator
 
+# from habitat.sims.habitat_simulator.actions import (
+#     HabitatSimV1ActionSpaceConfiguration,
+# )
+
 
 def _try_register_habitat_sim():
     try:
-        import habitat_sim
+        import habitat_sim  # noqa: F401
 
         has_habitat_sim = True
     except ImportError as e:
@@ -12,8 +16,7 @@ def _try_register_habitat_sim():
         habitat_sim_import_error = e
 
     if has_habitat_sim:
-        from habitat.sims.habitat_simulator.habitat_simulator import HabitatSim
-        from habitat.sims.habitat_simulator.action_spaces import (
+        from habitat.sims.habitat_simulator.actions import (  # noqa: F401
             HabitatSimV1ActionSpaceConfiguration,
         )
     else:
