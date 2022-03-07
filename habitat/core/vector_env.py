@@ -63,6 +63,7 @@ NUMBER_OF_EPISODE_NAME = "number_of_episodes"
 ACTION_SPACE_NAME = "action_space"
 OBSERVATION_SPACE_NAME = "observation_space"
 
+SHARE_OBSERVATION_SPACE_COMMAND = "share_observation_space"
 
 def _make_env_fn(
     config: Config, dataset: Optional[habitat.Dataset] = None, rank: int = 0
@@ -194,6 +195,11 @@ class VectorEnv:
             read_fn() for read_fn in self._connection_read_fns
         ]
         for write_fn in self._connection_write_fns:
+            write_fn((CALL_COMMAND, (SHARE_OBSERVATION_SPACE_COMMAND, None)))
+        self.share_observation_space = [
+            read_fn() for read_fn in self._connection_read_fns
+        ]
+        for write_fn in self._connection_write_fns:
             write_fn((CALL_COMMAND, (ACTION_SPACE_NAME, None)))
         self.action_spaces = [
             read_fn() for read_fn in self._connection_read_fns
@@ -242,7 +248,7 @@ class VectorEnv:
                         # habitat.RLEnv
                         observations, reward, done, info = env.step(**data)
                         if auto_reset_done and done:
-                            observations = env.reset()
+                            observations, info = env.reset()
                         with profiling_wrapper.RangeContext(
                             "worker write after step"
                         ):
@@ -253,13 +259,13 @@ class VectorEnv:
                         # habitat.Env
                         observations = env.step(**data)
                         if auto_reset_done and env.episode_over:
-                            observations = env.reset()
+                            observations, info = env.reset()
                         connection_write_fn(observations)
                     else:
                         raise NotImplementedError
 
                 elif command == RESET_COMMAND:
-                    observations = env.reset()
+                    observations, info = env.reset()
                     connection_write_fn(observations)
 
                 elif command == RENDER_COMMAND:

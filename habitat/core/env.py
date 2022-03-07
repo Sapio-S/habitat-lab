@@ -12,6 +12,7 @@ import gym
 import numba
 import numpy as np
 from gym import spaces
+import json
 
 from habitat.config import Config
 from habitat.core.dataset import Dataset, Episode, EpisodeIterator
@@ -22,6 +23,10 @@ from habitat.sims import make_sim
 from habitat.tasks import make_task
 from habitat.utils import profiling_wrapper
 
+from habitat.utils.geometry_utils import quaternion_to_list
+from habitat_sim import utils
+from onpolicy.envs.habitat.utils import pose as pu
+from icecream import ic
 
 class Env:
     r"""Fundamental environment class for :ref:`habitat`.
@@ -125,10 +130,30 @@ class Env:
         self._max_episode_seconds = (
             self._config.ENVIRONMENT.MAX_EPISODE_SECONDS
         )
-        self._max_episode_steps = self._config.ENVIRONMENT.MAX_EPISODE_STEPS
+        self._max_episode_steps = self._config.ENVIRONMENT.MAX_EPISODE_STEPS * self._config.SIMULATOR.NUM_AGENTS
         self._elapsed_steps = 0
         self._episode_start_time: Optional[float] = None
         self._episode_over = False
+        self.num_agents = config.SIMULATOR.NUM_AGENTS
+
+        # for fixed start pos
+        if self._config.SIMULATOR.USE_FIXED_START_POS:
+            self.fixed_start_position = []
+            self.fixed_start_rotation = []
+            if "replica" in self._config.SIMULATOR.SCENE:
+                scene_id = self._config.SIMULATOR.SCENE.split("/")[-3]
+            else:
+                scene_id = self._config.SIMULATOR.SCENE.split("/")[-1].split(".")[0]
+            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id + "/{}agents/start_position.json".format(self.num_agents)
+            with open(filepath,'r',encoding='utf-8') as json_file:
+                self.fixed_start_position = json.load(json_file)
+
+            filepath = self._config.SIMULATOR.FIXED_MODEL_PATH + scene_id +"/{}agents/start_rotation.json".format(self.num_agents)
+            with open(filepath,'r',encoding='utf-8') as json_file:
+                self.fixed_start_rotation = json.load(json_file)
+            
+            self.load_num = 0
+
 
     @property
     def current_episode(self) -> Episode:
@@ -216,10 +241,19 @@ class Env:
         if self._current_episode is not None:
             self._current_episode._shortest_path_cache = None
 
-        self._current_episode = next(self._episode_iterator)
+        self.current_episode = random.choice(self.episodes) if self._config.DATASET.USE_SAME_SCENE else next(self._episode_iterator)
         self.reconfigure(self._config)
 
         observations = self.task.reset(episode=self.current_episode)
+
+        # TODO check
+        for agent_id in range(len(observations)):
+            observations[agent_id].update(
+                self.task.sensor_suite.get_observations(
+                    observations=observations[agent_id], episode=self.current_episode
+                )
+            )
+
         self._task.measurements.reset_measures(
             episode=self.current_episode, task=self.task
         )
@@ -238,7 +272,7 @@ class Env:
             self.episode_iterator.step_taken()
 
     def step(
-        self, action: Union[int, str, Dict[str, Any]], **kwargs
+        self, action: Union[int, str, Dict[str, Any]], agent_id, **kwargs
     ) -> Observations:
         r"""Perform an action in the environment and return observations.
 
@@ -262,7 +296,7 @@ class Env:
             action = {"action": action}
 
         observations = self.task.step(
-            action=action, episode=self.current_episode
+            action=action, episode=self.current_episode, agent_id=agent_id
         )
 
         self._task.measurements.update_measures(
@@ -286,12 +320,52 @@ class Env:
         self._sim.seed(seed)
         self._task.seed(seed)
 
+    def generate_state(self):
+        generate_success = False
+        while not generate_success:
+            state = random.sample(self.episodes, self.num_agents)
+            start_position = []
+            start_rotation = []
+            start_y = []
+            for agent_id in range(self.num_agents):
+                start_position.append(state[agent_id].start_position)
+                start_y.append(state[agent_id].start_position[1])
+                start_rotation.append(state[agent_id].start_rotation)
+            
+            if len(np.unique(start_y)) == 1:
+                generate_success = True
+                if not self._config.SIMULATOR.USE_FULL_RAND_STATE:
+                    for i in range(self.num_agents):
+                        x1 = -start_position[i][2]
+                        y1 = -start_position[i][0]
+                        for j in range(self.num_agents-i-1):
+                            x2 = -start_position[i+j+1][2]
+                            y2 = -start_position[i+j+1][0]
+                            if pu.get_l2_distance(x1, x2, y1, y2)<2:
+                                pass
+                            else:
+                                generate_success = False
+                                break
+                        if generate_success == False:
+                            break
+
+        return start_position, start_rotation
+
     def reconfigure(self, config: Config) -> None:
         self._config = config
 
         self._config.defrost()
+
+        if self._config.SIMULATOR.USE_FIXED_START_POS:
+            start_position = self.fixed_start_position[self.load_num]
+            start_rotation = self.fixed_start_rotation[self.load_num]
+            self.load_num += 1
+        else:
+            start_position, start_rotation = self.generate_state()
+
+
         self._config.SIMULATOR = self._task.overwrite_sim_config(
-            self._config.SIMULATOR, self.current_episode
+            self._config.SIMULATOR, self.current_episode, start_position, start_rotation
         )
         self._config.freeze()
 
@@ -396,16 +470,17 @@ class RLEnv(gym.Env):
         raise NotImplementedError
 
     @profiling_wrapper.RangeContext("RLEnv.step")
-    def step(self, *args, **kwargs) -> Tuple[Observations, Any, bool, dict]:
+    def step(self, agent_id, *args, **kwargs) -> Tuple[Observations, Any, bool, dict]:
         r"""Perform an action in the environment.
 
         :return: :py:`(observations, reward, done, info)`
         """
 
+        # TODO check
         observations = self._env.step(*args, **kwargs)
-        reward = self.get_reward(observations)
-        done = self.get_done(observations)
-        info = self.get_info(observations)
+        reward = self.get_reward(observations, agent_id)
+        done = self.get_done(observations, agent_id)
+        info = self.get_info(observations, agent_id)
 
         return observations, reward, done, info
 
